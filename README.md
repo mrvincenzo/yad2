@@ -63,7 +63,7 @@ You should receive a test message in every configured chat.
 
 ```bash
 # Create logs directory
-mkdir -p /Users/ilia/projects/yad2/logs
+mkdir -p logs
 
 # Install the launchd plist
 cp com.yad2.watcher.plist ~/Library/LaunchAgents/
@@ -84,7 +84,7 @@ launchctl list | grep yad2
 
 To view logs:
 ```bash
-tail -f /Users/ilia/projects/yad2/logs/watcher.log
+tail -f logs/watcher.log
 ```
 
 ### 7. Check run statistics
