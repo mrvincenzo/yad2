@@ -191,7 +191,7 @@ def get_chat_id(ctx: click.Context) -> None:
 
     console.print(table)
     console.print(
-        "\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_ids[/cyan][/bold]"
+        "\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_ids[/cyan][/bold]"  # noqa: E501
     )
 
 
