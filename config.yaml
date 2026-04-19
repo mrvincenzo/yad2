@@ -1,0 +1,47 @@
+# Yad2 Apartment Watcher — Configuration
+# ----------------------------------------
+# Docs: https://github.com/ilia/yad2-watcher
+
+telegram:
+  # bot_token is loaded from .env (YAD2_BOT_TOKEN) — do not store here
+  # Run: poetry run yad2-watcher get-chat-id  (after messaging the bot)
+  chat_id: "422717997"
+
+watcher:
+  # How often to poll each neighborhood (in minutes)
+  interval_minutes: 30
+  # Path to the SQLite database file
+  db_path: "~/.yad2_watcher/seen.db"
+  # Request timeout in seconds
+  request_timeout: 20
+  # Delay between neighborhood fetches (seconds) — be polite
+  fetch_delay_seconds: 5
+
+# Shared search filters applied to all neighborhoods
+search_defaults:
+  min_price: 6000
+  max_price: 9000
+  min_rooms: 4
+  max_rooms: 4.5
+  area: 7        # area=7 → Jerusalem area
+  city: 3000     # city=3000 → Jerusalem
+
+# Neighborhoods to monitor
+# Each entry needs: id, name, url_slug
+# url_slug is the path segment after /realestate/rent/  (e.g. jerusalem-area)
+neighborhoods:
+  - id: 561
+    name: "גבעת הורדים, רסקו"
+    url_slug: "jerusalem-area"
+
+  - id: 544
+    name: "קטמון"
+    url_slug: "jerusalem-area"
+
+  # Add more neighborhoods here, for example:
+  # - id: 567
+  #   name: "רחביה"
+  #   url_slug: "jerusalem-area"
+  # - id: 570
+  #   name: "טלביה"
+  #   url_slug: "jerusalem-area"

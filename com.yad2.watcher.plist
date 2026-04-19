@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.yad2.watcher</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Full path to the poetry-managed Python environment -->
+        <!-- Update this path if your poetry venv is different -->
+        <string>/opt/homebrew/bin/poetry</string>
+        <string>run</string>
+        <string>yad2-watcher</string>
+        <string>--config</string>
+        <string>/Users/ilia/projects/yad2/config.yaml</string>
+        <string>run</string>
+    </array>
+    <!--
+        Note: YAD2_BOT_TOKEN is loaded automatically from
+        /Users/ilia/projects/yad2/.env by python-dotenv at startup.
+        launchd does not source .env files, so we rely on dotenv in code.
+    -->
+
+    <key>WorkingDirectory</key>
+    <string>/Users/ilia/projects/yad2</string>
+
+    <!-- Run every 30 minutes -->
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <!-- Retry if the job exits with a non-zero status -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Run immediately when launchd loads the plist -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Log stdout and stderr -->
+    <key>StandardOutPath</key>
+    <string>/Users/ilia/projects/yad2/logs/watcher.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/ilia/projects/yad2/logs/watcher.err</string>
+
+    <!-- Environment variables -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>
