@@ -92,9 +92,9 @@ def run(ctx: click.Context) -> None:
     """Run a single scan pass across all configured neighborhoods."""
     config = _load_config(ctx.obj["config_path"])
 
-    if not config.get("telegram", {}).get("chat_id"):
+    if not config.get("telegram", {}).get("chat_ids"):
         console.print(
-            "[yellow]⚠ chat_id is not set in config.yaml.[/yellow]\n"
+            "[yellow]⚠ chat_ids is not set in config.yaml.[/yellow]\n"
             "Run [bold]yad2-watcher get-chat-id[/bold] after messaging @yad2_jlm_bot."
         )
         sys.exit(1)
@@ -125,9 +125,9 @@ def watch(ctx: click.Context, interval: Optional[int]) -> None:
     """Run continuously, polling every N minutes. Ctrl+C to stop."""
     config = _load_config(ctx.obj["config_path"])
 
-    if not config.get("telegram", {}).get("chat_id"):
+    if not config.get("telegram", {}).get("chat_ids"):
         console.print(
-            "[yellow]⚠ chat_id is not set in config.yaml.[/yellow]\n"
+            "[yellow]⚠ chat_ids is not set in config.yaml.[/yellow]\n"
             "Run [bold]yad2-watcher get-chat-id[/bold] after messaging @yad2_jlm_bot."
         )
         sys.exit(1)
@@ -191,7 +191,7 @@ def get_chat_id(ctx: click.Context) -> None:
             seen_ids.add(cid)
 
     console.print(table)
-    console.print("\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_id[/cyan][/bold]")
+    console.print("\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_ids[/cyan][/bold]")
 
 
 @cli.command()
@@ -238,16 +238,16 @@ def test_notify(ctx: click.Context) -> None:
     config = _load_config(ctx.obj["config_path"])
     telegram_cfg = config.get("telegram", {})
     bot_token = telegram_cfg["bot_token"]  # guaranteed by _load_config
-    chat_id = str(telegram_cfg.get("chat_id", ""))
+    chat_ids = [str(c) for c in telegram_cfg.get("chat_ids", [])]
 
-    if not chat_id:
+    if not chat_ids:
         console.print(
-            "[yellow]chat_id is not set.[/yellow] Run [bold]get-chat-id[/bold] first."
+            "[yellow]chat_ids is not set.[/yellow] Run [bold]get-chat-id[/bold] first."
         )
         sys.exit(1)
 
-    notifier = TelegramNotifier(bot_token, chat_id)
-    console.print(f"Sending test message to chat_id {chat_id}...")
+    notifier = TelegramNotifier(bot_token, chat_ids)
+    console.print(f"Sending test message to {len(chat_ids)} chat(s): {', '.join(chat_ids)}...")
     success = notifier.send_text(
         "🏠 *Yad2 Watcher* — בדיקת חיבור\n\nהבוט עובד! תקבל כאן התראות על דירות חדשות. ✅"
     )

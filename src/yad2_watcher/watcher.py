@@ -24,9 +24,10 @@ class Watcher:
     def __init__(self, config: dict[str, Any]) -> None:
         self._config = config
         telegram_cfg = config["telegram"]
+        chat_ids = [str(c) for c in telegram_cfg.get("chat_ids", [])]
         self._notifier = TelegramNotifier(
             bot_token=telegram_cfg["bot_token"],
-            chat_id=str(telegram_cfg["chat_id"]),
+            chat_ids=chat_ids,
         )
         watcher_cfg = config.get("watcher", {})
         self._db_path = watcher_cfg.get("db_path", "~/.yad2_watcher/seen.db")

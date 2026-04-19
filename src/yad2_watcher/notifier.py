@@ -68,30 +68,27 @@ def _format_message(listing: Listing) -> str:
 
 
 class TelegramNotifier:
-    """Sends listing alerts via Telegram Bot API."""
+    """Sends listing alerts to one or more Telegram chats via Bot API."""
 
-    def __init__(self, bot_token: str, chat_id: str) -> None:
+    def __init__(self, bot_token: str, chat_ids: list[str]) -> None:
         self._token = bot_token
-        self._chat_id = chat_id
+        self._chat_ids = chat_ids
 
     def _api_url(self, method: str) -> str:
         return TELEGRAM_API.format(token=self._token, method=method)
 
     def send_listing(self, listing: Listing) -> bool:
-        """
-        Send a formatted Telegram message for a listing.
-        Returns True on success, False on failure (logs the error).
-        """
+        """Send a formatted message for a listing to all configured chats."""
         text = _format_message(listing)
-        return self._send_message(text, disable_web_page_preview=False)
+        return all(self._send_message(cid, text, disable_web_page_preview=False) for cid in self._chat_ids)
 
     def send_text(self, text: str) -> bool:
-        """Send a plain text message (used for status/startup alerts)."""
-        return self._send_message(text, disable_web_page_preview=True)
+        """Send a plain text message to all configured chats."""
+        return all(self._send_message(cid, text, disable_web_page_preview=True) for cid in self._chat_ids)
 
-    def _send_message(self, text: str, *, disable_web_page_preview: bool = True) -> bool:
+    def _send_message(self, chat_id: str, text: str, *, disable_web_page_preview: bool = True) -> bool:
         payload = {
-            "chat_id": self._chat_id,
+            "chat_id": chat_id,
             "text": text,
             "parse_mode": "Markdown",
             "disable_web_page_preview": disable_web_page_preview,
@@ -114,19 +111,21 @@ class TelegramNotifier:
 
     def send_photo(self, listing: Listing) -> bool:
         """
-        Send a listing as a photo message with caption.
+        Send a listing as a photo message with caption to all configured chats.
         Falls back to text-only if no cover image.
         """
         if not listing.cover_image:
             return self.send_listing(listing)
+        return all(self._send_photo_to(cid, listing) for cid in self._chat_ids)
 
+    def _send_photo_to(self, chat_id: str, listing: Listing) -> bool:
+        """Send photo+caption to a single chat_id."""
         caption = _format_message(listing)
-        # Telegram captions have a 1024 char limit
         if len(caption) > 1024:
             caption = caption[:1021] + "..."
 
         payload = {
-            "chat_id": self._chat_id,
+            "chat_id": chat_id,
             "photo": listing.cover_image,
             "caption": caption,
             "parse_mode": "Markdown",
@@ -140,15 +139,15 @@ class TelegramNotifier:
             resp.raise_for_status()
             result = resp.json()
             if not result.get("ok"):
-                # Cover image URL may be expired — fall back to text
                 logger.warning(
-                    "sendPhoto failed (%s), falling back to text", result.get("description")
+                    "sendPhoto failed for chat %s (%s), falling back to text",
+                    chat_id, result.get("description")
                 )
-                return self.send_listing(listing)
+                return self._send_message(chat_id, _format_message(listing), disable_web_page_preview=False)
             return True
         except requests.RequestException as exc:
-            logger.error("Failed to send Telegram photo: %s", exc)
-            return self.send_listing(listing)
+            logger.error("Failed to send Telegram photo to %s: %s", chat_id, exc)
+            return self._send_message(chat_id, _format_message(listing), disable_web_page_preview=False)
 
     @classmethod
     def get_chat_id(cls, bot_token: str) -> list[dict]:
