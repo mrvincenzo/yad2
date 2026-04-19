@@ -80,7 +80,7 @@ class Listing:
         if self.house_number:
             parts.append(str(self.house_number))
         if self.neighborhood:
-            parts.append(f"({self.neighborhood})")
+            parts.append(f"{self.neighborhood}")
         return " ".join(parts) if parts else "כתובת לא ידועה"
 
 

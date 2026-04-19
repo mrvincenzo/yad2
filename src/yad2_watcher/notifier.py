@@ -28,13 +28,6 @@ def _format_message(listing: Listing) -> str:
     """Build a clean Telegram message for a single listing."""
     lines = []
 
-    # Header
-    neighborhood_display = (
-        listing.search_neighborhood_name or listing.neighborhood or "שכונה לא ידועה"
-    )
-    lines.append(f"🏠 *דירה חדשה | {neighborhood_display}*")
-    lines.append("")
-
     # Price
     price_str = f"₪{listing.price:,}".replace(",", ",")
     lines.append(f"💰 {price_str}/חודש")
