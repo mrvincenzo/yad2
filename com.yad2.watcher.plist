@@ -14,17 +14,17 @@
         <string>run</string>
         <string>yad2-watcher</string>
         <string>--config</string>
-        <string>/Users/ilia/projects/yad2/config.yaml</string>
+        <string>/Users/aleftbet/yad2/config.yaml</string>
         <string>run</string>
     </array>
     <!--
         Note: YAD2_BOT_TOKEN is loaded automatically from
-        /Users/ilia/projects/yad2/.env by python-dotenv at startup.
+        /Users/alefbet/yad2/.env by python-dotenv at startup.
         launchd does not source .env files, so we rely on dotenv in code.
     -->
 
     <key>WorkingDirectory</key>
-    <string>/Users/ilia/projects/yad2</string>
+    <string>/Users/alefbet/yad2</string>
 
     <!-- Run every 30 minutes -->
     <key>StartInterval</key>
@@ -40,10 +40,10 @@
 
     <!-- Log stdout and stderr -->
     <key>StandardOutPath</key>
-    <string>/Users/ilia/projects/yad2/logs/watcher.log</string>
+    <string>/Users/alefbet/yad2/logs/watcher.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/ilia/projects/yad2/logs/watcher.err</string>
+    <string>/Users/alefbet/yad2/logs/watcher.err</string>
 
     <!-- Environment variables -->
     <key>EnvironmentVariables</key>
