@@ -67,14 +67,14 @@ mkdir -p logs
 
 # Install the launchd plist
 cp com.yad2.watcher.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.yad2.watcher.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.yad2.watcher.plist
 ```
 
 The watcher will now run every 30 minutes automatically, even after reboots (as long as you're logged in).
 
 To stop it:
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.yad2.watcher.plist
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.yad2.watcher.plist
 ```
 
 To check status:
