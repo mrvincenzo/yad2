@@ -21,7 +21,7 @@ watcher:
   fetch_delay_seconds: 5
   # Journal: append every new listing to a monthly Markdown file
   journal_enabled: true
-  journal_path: "~/.yad2/journal"
+  journal_path: "~/.yad2_watcher/journal"
 
 # Shared search filters applied to all neighborhoods
 search_defaults:
