@@ -9,6 +9,7 @@ import time
 from typing import Any
 
 from .fetcher import Listing, fetch_listings
+from .journal import Journal, NullJournal
 from .notifier import TelegramNotifier
 from .store import SeenStore
 
@@ -34,6 +35,12 @@ class Watcher:
         self._timeout = watcher_cfg.get("request_timeout", 20)
         self._fetch_delay = watcher_cfg.get("fetch_delay_seconds", 5)
         self._store = SeenStore(self._db_path)
+
+        journal_enabled = watcher_cfg.get("journal_enabled", True)
+        journal_path = watcher_cfg.get("journal_path", "~/.yad2/journal")
+        self._journal: Journal | NullJournal = (
+            Journal(journal_path) if journal_enabled else NullJournal()
+        )
 
         defaults = config.get("search_defaults", {})
         self._min_price = defaults.get("min_price", 6000)
@@ -103,7 +110,7 @@ class Watcher:
         return [listing for listing in listings if not self._store.is_seen(listing.token)]
 
     def _send_and_mark(self, listing: Listing) -> None:
-        """Send Telegram alert and mark as seen (even if send fails, to avoid spam)."""
+        """Send Telegram alert, journal, and mark as seen (even if send fails)."""
         try:
             success = self._notifier.send_photo(listing)
             if success:
@@ -113,8 +120,9 @@ class Watcher:
         except Exception as exc:
             logger.error("  ✗ Error sending alert for %s: %s", listing.token, exc)
         finally:
-            # Always mark as seen to prevent infinite re-alerting on send failures
+            # Always mark as seen and journal — prevents re-alerting on send failures
             self._store.mark_seen(listing.token, listing.search_neighborhood_id, listing.price)
+            self._journal.append(listing)
 
     def close(self) -> None:
         self._store.close()

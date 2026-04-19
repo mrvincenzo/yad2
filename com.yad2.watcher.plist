@@ -28,7 +28,7 @@
 
     <!-- Run every 30 minutes -->
     <key>StartInterval</key>
-    <integer>1800</integer>
+    <integer>3600</integer>
 
     <!-- Retry if the job exits with a non-zero status -->
     <key>KeepAlive</key>

@@ -8,6 +8,7 @@ Automatically monitors Yad2 for new apartment listings and sends Telegram alerts
 - Extracts listings from Yad2's server-rendered `__NEXT_DATA__` JSON (no headless browser needed)
 - Tracks seen listing tokens in a local SQLite DB to avoid duplicate alerts
 - Sends formatted Telegram messages to one or more chats with listing details and a direct link
+- Appends every new listing to a **monthly Markdown journal** (`~/.yad2/journal/`) for persistent history and Obsidian integration
 
 ## Setup
 
@@ -120,13 +121,59 @@ neighborhoods:
 
 To find neighborhood IDs: look at the Yad2 search URL — the `neighborhood=` parameter is the ID.
 
+## Journal
+
+Every new listing is appended to a monthly Markdown file in `~/.yad2/journal/`:
+
+```
+~/.yad2/journal/
+├── journal_2026-04.md
+├── journal_2026-05.md
+└── ...
+```
+
+Each entry looks like:
+
+```markdown
+## 2026-04-19 22:31 | ₪7,500/חודש #neighborhood/rasko
+
+- 📍 **Address:** דוד שמעוני 10, גבעת הורדים
+- 🛏️ **Rooms:** 4 | **SQM:** 90 | **Floor:** 2
+- 🏷️ **Type:** פרטי · מרפסת · חניה
+- 🔗 [פתח מודעה](https://www.yad2.co.il/item/abc123)
+- ⏰ **Seen at:** 2026-04-19 22:31:05
+```
+
+### Obsidian integration
+
+Open `~/.yad2/journal/` as an Obsidian vault (or add it to an existing vault).
+Each entry carries a `#neighborhood/<name>` tag, so you can:
+
+- **Filter by area** — click any tag in the Tags panel (e.g. `#neighborhood/rasko`)
+- **Graph view** — neighborhood tags appear as cluster nodes linking their listings
+- **Dataview** — build a live index note with a query like `LIST FROM #neighborhood/rasko`
+
+To disable the journal, set in `config.yaml`:
+
+```yaml
+watcher:
+  journal_enabled: false
+```
+
+To change the output directory:
+
+```yaml
+watcher:
+  journal_path: "~/my-notes/apartments"
+```
+
 ## Running tests
 
 ```bash
 /opt/homebrew/bin/poetry run pytest tests/ -v
 ```
 
-72 tests covering fetcher, store, notifier, and watcher — all mocked, no network calls.
+90 tests covering fetcher, store, notifier, watcher, and journal — all mocked, no network calls.
 
 ## Project structure
 
@@ -141,6 +188,7 @@ yad2/
 │   ├── fetcher.py                 # HTTP fetch + JSON parsing
 │   ├── store.py                   # SQLite dedup store (~/.yad2_watcher/seen.db)
 │   ├── notifier.py                # Telegram Bot sender (broadcasts to all chat IDs)
+│   ├── journal.py                 # Monthly Markdown journal (~/.yad2/journal/)
 │   ├── watcher.py                 # Main orchestration loop
 │   └── cli.py                     # Click CLI
 └── tests/
@@ -148,5 +196,6 @@ yad2/
     ├── test_fetcher.py            # Fetcher + Listing tests
     ├── test_store.py              # SQLite store tests
     ├── test_notifier.py           # Message formatting + Telegram API tests
-    └── test_watcher.py            # Orchestration tests
+    ├── test_watcher.py            # Orchestration tests
+    └── test_journal.py            # Journal tests
 ```

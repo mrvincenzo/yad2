@@ -12,13 +12,16 @@ telegram:
 
 watcher:
   # How often to poll each neighborhood (in minutes)
-  interval_minutes: 30
+  interval_minutes: 60
   # Path to the SQLite database file
   db_path: "~/.yad2_watcher/seen.db"
   # Request timeout in seconds
   request_timeout: 20
   # Delay between neighborhood fetches (seconds) — be polite
   fetch_delay_seconds: 5
+  # Journal: append every new listing to a monthly Markdown file
+  journal_enabled: true
+  journal_path: "~/.yad2/journal"
 
 # Shared search filters applied to all neighborhoods
 search_defaults:
