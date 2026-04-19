@@ -14,7 +14,7 @@
         <string>run</string>
         <string>yad2-watcher</string>
         <string>--config</string>
-        <string>/Users/aleftbet/yad2/config.yaml</string>
+        <string>/Users/alefbet/yad2/config.yaml</string>
         <string>run</string>
     </array>
     <!--
