@@ -29,7 +29,9 @@ def _format_message(listing: Listing) -> str:
     lines = []
 
     # Header
-    neighborhood_display = listing.search_neighborhood_name or listing.neighborhood or "שכונה לא ידועה"
+    neighborhood_display = (
+        listing.search_neighborhood_name or listing.neighborhood or "שכונה לא ידועה"
+    )
     lines.append(f"🏠 *דירה חדשה | {neighborhood_display}*")
     lines.append("")
 
@@ -80,13 +82,19 @@ class TelegramNotifier:
     def send_listing(self, listing: Listing) -> bool:
         """Send a formatted message for a listing to all configured chats."""
         text = _format_message(listing)
-        return all(self._send_message(cid, text, disable_web_page_preview=False) for cid in self._chat_ids)
+        return all(
+            self._send_message(cid, text, disable_web_page_preview=False) for cid in self._chat_ids
+        )
 
     def send_text(self, text: str) -> bool:
         """Send a plain text message to all configured chats."""
-        return all(self._send_message(cid, text, disable_web_page_preview=True) for cid in self._chat_ids)
+        return all(
+            self._send_message(cid, text, disable_web_page_preview=True) for cid in self._chat_ids
+        )
 
-    def _send_message(self, chat_id: str, text: str, *, disable_web_page_preview: bool = True) -> bool:
+    def _send_message(
+        self, chat_id: str, text: str, *, disable_web_page_preview: bool = True
+    ) -> bool:
         payload = {
             "chat_id": chat_id,
             "text": text,
@@ -141,13 +149,18 @@ class TelegramNotifier:
             if not result.get("ok"):
                 logger.warning(
                     "sendPhoto failed for chat %s (%s), falling back to text",
-                    chat_id, result.get("description")
+                    chat_id,
+                    result.get("description"),
                 )
-                return self._send_message(chat_id, _format_message(listing), disable_web_page_preview=False)
+                return self._send_message(
+                    chat_id, _format_message(listing), disable_web_page_preview=False
+                )
             return True
         except requests.RequestException as exc:
             logger.error("Failed to send Telegram photo to %s: %s", chat_id, exc)
-            return self._send_message(chat_id, _format_message(listing), disable_web_page_preview=False)
+            return self._send_message(
+                chat_id, _format_message(listing), disable_web_page_preview=False
+            )
 
     @classmethod
     def get_chat_id(cls, bot_token: str) -> list[dict]:
@@ -168,9 +181,7 @@ class TelegramNotifier:
                 chats.append(
                     {
                         "chat_id": str(chat.get("id")),
-                        "name": chat.get("first_name", "")
-                        + " "
-                        + chat.get("last_name", ""),
+                        "name": chat.get("first_name", "") + " " + chat.get("last_name", ""),
                         "username": chat.get("username", ""),
                         "type": chat.get("type", ""),
                     }

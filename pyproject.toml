@@ -2,17 +2,21 @@
 name = "yad2-watcher"
 version = "0.1.0"
 description = "Yad2 apartment listing watcher with Telegram notifications"
-authors = [
-    {name = "Ilia"}
-]
-requires-python = "^3.11"
+authors = [{ name = "Ilia" }]
+requires-python = ">=3.11"
 dependencies = [
     "requests (>=2.33.1,<3.0.0)",
     "pyyaml (>=6.0.3,<7.0.0)",
     "click (>=8.3.2,<9.0.0)",
     "rich (>=15.0.0,<16.0.0)",
     "httpx (>=0.28.1,<0.29.0)",
-    "python-dotenv (>=1.2.2,<2.0.0)"
+    "python-dotenv (>=1.2.2,<2.0.0)",
+]
+
+[dependency-groups]
+dev = [ #
+    "ruff (>=0.15.11,<0.16.0)",
+    "pyrefly (>=0.61.1,<0.62.0)",
 ]
 
 [project.scripts]
@@ -28,3 +32,11 @@ packages = [{ include = "yad2_watcher", from = "src" }]
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501"]

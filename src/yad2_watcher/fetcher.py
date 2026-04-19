@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -148,8 +147,7 @@ def fetch_listings(
     # Sanity check — if we hit the CAPTCHA page, surface it clearly
     if "ShieldSquare" in html or "shieldsquare" in html.lower():
         raise ValueError(
-            "Yad2 returned a ShieldSquare CAPTCHA. "
-            "The request headers may need to be updated."
+            "Yad2 returned a ShieldSquare CAPTCHA. The request headers may need to be updated."
         )
 
     match = _NEXT_DATA_RE.search(html)

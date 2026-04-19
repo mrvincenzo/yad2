@@ -73,9 +73,7 @@ class Watcher:
                     timeout=self._timeout,
                 )
             except Exception as exc:
-                logger.error(
-                    "Failed to fetch %s (%s): %s", nbhd_name, nbhd_id, exc
-                )
+                logger.error("Failed to fetch %s (%s): %s", nbhd_name, nbhd_id, exc)
                 self._store.log_run(nbhd_id, 0, 0, str(exc))
                 summary[nbhd_name] = 0
                 continue
@@ -102,7 +100,7 @@ class Watcher:
 
     def _find_new(self, listings: list[Listing]) -> list[Listing]:
         """Filter to only listings not yet seen."""
-        return [l for l in listings if not self._store.is_seen(l.token)]
+        return [listing for listing in listings if not self._store.is_seen(listing.token)]
 
     def _send_and_mark(self, listing: Listing) -> None:
         """Send Telegram alert and mark as seen (even if send fails, to avoid spam)."""
@@ -121,7 +119,7 @@ class Watcher:
     def close(self) -> None:
         self._store.close()
 
-    def __enter__(self) -> "Watcher":
+    def __enter__(self) -> Watcher:
         return self
 
     def __exit__(self, *_: object) -> None:

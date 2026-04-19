@@ -50,9 +50,7 @@ class SeenStore:
 
     def is_seen(self, token: str) -> bool:
         """Return True if this token has already been notified."""
-        row = self._conn.execute(
-            "SELECT 1 FROM seen_tokens WHERE token = ?", (token,)
-        ).fetchone()
+        row = self._conn.execute("SELECT 1 FROM seen_tokens WHERE token = ?", (token,)).fetchone()
         return row is not None
 
     def mark_seen(self, token: str, neighborhood_id: int, price: int) -> None:
@@ -109,7 +107,7 @@ class SeenStore:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "SeenStore":
+    def __enter__(self) -> SeenStore:
         return self
 
     def __exit__(self, *_: object) -> None:

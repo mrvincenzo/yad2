@@ -12,18 +12,17 @@ Commands:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
-import os
 import click
 import yaml
 from dotenv import load_dotenv
+from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
-from rich import print as rprint
 
 from .notifier import TelegramNotifier
 from .store import SeenStore
@@ -121,7 +120,7 @@ def run(ctx: click.Context) -> None:
     help="Override poll interval in minutes (default: from config.yaml)",
 )
 @click.pass_context
-def watch(ctx: click.Context, interval: Optional[int]) -> None:
+def watch(ctx: click.Context, interval: int | None) -> None:
     """Run continuously, polling every N minutes. Ctrl+C to stop."""
     config = _load_config(ctx.obj["config_path"])
 
@@ -142,13 +141,13 @@ def watch(ctx: click.Context, interval: Optional[int]) -> None:
     with Watcher(config) as watcher:
         while True:
             try:
-                rprint(f"[dim]⟳ Scanning...[/dim]")
+                rprint("[dim]⟳ Scanning...[/dim]")
                 summary = watcher.run_once()
                 total_new = sum(summary.values())
                 if total_new:
                     rprint(f"[green]✓ {total_new} new listing(s) sent[/green]")
                 else:
-                    rprint(f"[dim]✓ No new listings[/dim]")
+                    rprint("[dim]✓ No new listings[/dim]")
                 rprint(f"[dim]Next scan in {poll_minutes} minutes...[/dim]\n")
                 time.sleep(poll_seconds)
             except KeyboardInterrupt:
@@ -191,7 +190,9 @@ def get_chat_id(ctx: click.Context) -> None:
             seen_ids.add(cid)
 
     console.print(table)
-    console.print("\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_ids[/cyan][/bold]")
+    console.print(
+        "\n[bold]→ Copy the chat_id above and add it to config.yaml under [cyan]telegram.chat_ids[/cyan][/bold]"
+    )
 
 
 @cli.command()
@@ -241,9 +242,7 @@ def test_notify(ctx: click.Context) -> None:
     chat_ids = [str(c) for c in telegram_cfg.get("chat_ids", [])]
 
     if not chat_ids:
-        console.print(
-            "[yellow]chat_ids is not set.[/yellow] Run [bold]get-chat-id[/bold] first."
-        )
+        console.print("[yellow]chat_ids is not set.[/yellow] Run [bold]get-chat-id[/bold] first.")
         sys.exit(1)
 
     notifier = TelegramNotifier(bot_token, chat_ids)
