@@ -6,9 +6,8 @@ telegram:
   # bot_token is loaded from .env (YAD2_BOT_TOKEN) — do not store here
   # Run: poetry run yad2-watcher get-chat-id  (after messaging the bot)
   chat_ids:
-    - "422717997"
-    - "8233983837"
-    # - "other_chat_id"
+    - "422717997" # me
+    - "8233983837" # father
 
 watcher:
   # How often to poll each neighborhood (in minutes)
