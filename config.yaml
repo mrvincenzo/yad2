@@ -48,10 +48,10 @@ neighborhoods:
     name: "katamon"
     url_slug: "jerusalem-area"
 
-  # Add more neighborhoods here, for example:
-  # - id: 567
-  #   name: "רחביה"
-  #   url_slug: "jerusalem-area"
-  # - id: 570
-  #   name: "טלביה"
-  #   url_slug: "jerusalem-area"
+  - id: 556
+    name: "ramat-denia"
+    url_slug: "jerusalem-area"
+
+  - id: 553
+    name: "niot"
+    url_slug: "jerusalem-area"
