@@ -54,3 +54,11 @@ neighborhoods:
   - id: 553
     name: "niot"
     url_slug: "jerusalem-area"
+
+  - id: 565
+    name: "baka"
+    url_slug: "jerusalem-area"
+
+  - id: 564
+    name: "german-colony"
+    url_slug: "jerusalem-area"
