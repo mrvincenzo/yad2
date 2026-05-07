@@ -62,3 +62,11 @@ neighborhoods:
   - id: 564
     name: "german-colony"
     url_slug: "jerusalem-area"
+
+  - id: 375
+    name: "talpiot"
+    url_slug: "jerusalem-area"
+
+  - id: 501
+    name: "arnona"
+    url_slug: "jerusalem-area"
