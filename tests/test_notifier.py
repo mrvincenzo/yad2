@@ -27,14 +27,14 @@ class TestFormatMessage:
         private_listing.price = 7500
         msg = _format_message(private_listing)
         assert "ירידת מחיר" in msg
-        assert "📜 היסטוריה: ₪8,000 ➔ ₪7,800 ➔ ₪7,500" in msg
+        assert "📜 היסטוריה: ₪8,000 ← ₪7,800 ← ₪7,500" in msg
 
     def test_price_history_increase(self, private_listing: Listing) -> None:
         private_listing.price_history = [7000]
         private_listing.price = 7500
         msg = _format_message(private_listing)
         assert "עליית מחיר" in msg
-        assert "📜 היסטוריה: ₪7,000 ➔ ₪7,500" in msg
+        assert "📜 היסטוריה: ₪7,000 ← ₪7,500" in msg
 
     def test_contains_neighborhood_from_search_name(self, private_listing: Listing) -> None:
         msg = _format_message(private_listing)

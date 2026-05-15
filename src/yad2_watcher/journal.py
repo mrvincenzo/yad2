@@ -93,7 +93,7 @@ class Journal:
         if listing.price_history:
             history_strs = [f"₪{p:,}" for p in listing.price_history]
             history_strs.append(f"₪{listing.price:,}")
-            history_line = " ➔ ".join(history_strs).replace(",", ",")
+            history_line = " ← ".join(history_strs).replace(",", ",")
             lines.append(f"- 📜 **Price History:** {history_line}")
 
         # Address
