@@ -64,6 +64,8 @@ class Listing:
     city: str | None
     cover_image: str | None
     tags: list[str] = field(default_factory=list)
+    # Price history from the database (past prices, chronologically)
+    price_history: list[int] = field(default_factory=list)
     # Which search neighborhood generated this listing
     search_neighborhood_id: int = 0
     search_neighborhood_name: str = ""
@@ -80,7 +82,7 @@ class Listing:
         if self.house_number:
             parts.append(str(self.house_number))
         if self.neighborhood:
-            parts.append(f"{self.neighborhood}")
+            parts.append(f"({self.neighborhood})")
         return " ".join(parts) if parts else "כתובת לא ידועה"
 
 

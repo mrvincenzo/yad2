@@ -22,6 +22,20 @@ class TestFormatMessage:
         msg = _format_message(private_listing)
         assert "7,500" in msg or "7500" in msg
 
+    def test_price_history_drop(self, private_listing: Listing) -> None:
+        private_listing.price_history = [8000, 7800]
+        private_listing.price = 7500
+        msg = _format_message(private_listing)
+        assert "ירידת מחיר" in msg
+        assert "📜 היסטוריה: ₪8,000 ➔ ₪7,800 ➔ ₪7,500" in msg
+
+    def test_price_history_increase(self, private_listing: Listing) -> None:
+        private_listing.price_history = [7000]
+        private_listing.price = 7500
+        msg = _format_message(private_listing)
+        assert "עליית מחיר" in msg
+        assert "📜 היסטוריה: ₪7,000 ➔ ₪7,500" in msg
+
     def test_contains_neighborhood_from_search_name(self, private_listing: Listing) -> None:
         msg = _format_message(private_listing)
         assert "גבעת הורדים" in msg
@@ -34,7 +48,7 @@ class TestFormatMessage:
     def test_falls_back_to_unknown_neighborhood(self, minimal_listing: Listing) -> None:
         minimal_listing.search_neighborhood_name = ""
         msg = _format_message(minimal_listing)
-        assert "שכונה לא ידועה" in msg
+        assert "כתובת לא ידועה" in msg
 
     def test_integer_rooms_displayed_without_decimal(self, private_listing: Listing) -> None:
         private_listing.rooms = 4.0

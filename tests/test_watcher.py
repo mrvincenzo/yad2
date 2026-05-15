@@ -119,27 +119,43 @@ class TestRunOnce:
         assert mock_send.call_count == 2
 
 
-class TestFindNew:
+class TestFindNewOrUpdated:
     def test_filters_seen_tokens(self, tmp_path) -> None:
         config = _make_config(tmp_path)
         with Watcher(config) as w:
             w._store.mark_seen("tok1", 561, 7500)
-            listings = [_make_listing("tok1"), _make_listing("tok2")]
-            new = w._find_new(listings)
+            l1 = _make_listing("tok1")
+            l1.price = 7500
+            l2 = _make_listing("tok2")
+            new = w._find_new_or_updated([l1, l2])
 
         assert len(new) == 1
         assert new[0].token == "tok2"
+        assert new[0].price_history == []
+
+    def test_includes_updated_prices(self, tmp_path) -> None:
+        config = _make_config(tmp_path)
+        with Watcher(config) as w:
+            w._store.mark_seen("tok1", 561, 7500)
+            l1 = _make_listing("tok1")
+            l1.price = 7000
+            new = w._find_new_or_updated([l1])
+
+        assert len(new) == 1
+        assert new[0].token == "tok1"
+        assert new[0].price_history == [7500]
 
     def test_all_new_when_store_empty(self, tmp_path) -> None:
         with Watcher(_make_config(tmp_path)) as w:
             listings = [_make_listing("a"), _make_listing("b")]
-            assert len(w._find_new(listings)) == 2
+            assert len(w._find_new_or_updated(listings)) == 2
 
     def test_all_seen_returns_empty(self, tmp_path) -> None:
         with Watcher(_make_config(tmp_path)) as w:
             w._store.mark_seen("tok1", 561, 7500)
-            listings = [_make_listing("tok1")]
-            assert w._find_new(listings) == []
+            l1 = _make_listing("tok1")
+            l1.price = 7500
+            assert w._find_new_or_updated([l1]) == []
 
 
 class TestContextManager:

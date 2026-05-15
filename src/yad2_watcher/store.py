@@ -36,6 +36,14 @@ class SeenStore:
                 notified_at     TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
             );
 
+            CREATE TABLE IF NOT EXISTS price_history (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                token   TEXT NOT NULL,
+                price   INTEGER NOT NULL,
+                seen_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY(token) REFERENCES seen_tokens(token)
+            );
+
             CREATE TABLE IF NOT EXISTS run_log (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 run_at          TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -46,22 +54,47 @@ class SeenStore:
             );
             """
         )
-        self._conn.commit()
-
-    def is_seen(self, token: str) -> bool:
-        """Return True if this token has already been notified."""
-        row = self._conn.execute("SELECT 1 FROM seen_tokens WHERE token = ?", (token,)).fetchone()
-        return row is not None
-
-    def mark_seen(self, token: str, neighborhood_id: int, price: int) -> None:
-        """Record a token as notified."""
         self._conn.execute(
             """
-            INSERT OR IGNORE INTO seen_tokens (token, neighborhood_id, price)
+            INSERT INTO price_history (token, price, seen_at)
+            SELECT token, price, first_seen_at FROM seen_tokens
+            WHERE price IS NOT NULL AND token NOT IN (SELECT DISTINCT token FROM price_history)
+            """
+        )
+        self._conn.commit()
+
+    def get_price_history(self, token: str) -> list[int] | None:
+        """Return history of prices for this token. Returns None if never seen."""
+        row = self._conn.execute("SELECT 1 FROM seen_tokens WHERE token = ?", (token,)).fetchone()
+        if row is None:
+            return None
+
+        rows = self._conn.execute(
+            "SELECT price FROM price_history WHERE token = ? ORDER BY id ASC", (token,)
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def mark_seen(self, token: str, neighborhood_id: int, price: int) -> None:
+        """Record a token and its price as notified."""
+        self._conn.execute(
+            """
+            INSERT INTO seen_tokens (token, neighborhood_id, price)
             VALUES (?, ?, ?)
+            ON CONFLICT(token) DO UPDATE SET
+                price = excluded.price,
+                notified_at = datetime('now', 'localtime')
             """,
             (token, neighborhood_id, price),
         )
+
+        latest = self._conn.execute(
+            "SELECT price FROM price_history WHERE token = ? ORDER BY id DESC LIMIT 1", (token,)
+        ).fetchone()
+        if not latest or latest[0] != price:
+            self._conn.execute(
+                "INSERT INTO price_history (token, price) VALUES (?, ?)", (token, price)
+            )
+
         self._conn.commit()
 
     def log_run(

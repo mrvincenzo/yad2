@@ -76,12 +76,25 @@ class Journal:
         )
 
         # Heading line: timestamp | price | #neighborhood/tag
-        heading_parts = [timestamp, f"{price_str}/חודש"]
+        price_header = f"{price_str}/חודש"
+        if listing.price_history:
+            old_price = listing.price_history[-1]
+            diff = listing.price - old_price
+            direction = "📉 ירידת מחיר" if diff < 0 else "📈 עליית מחיר"
+            price_header = f"{price_str}/חודש ({direction})"
+
+        heading_parts = [timestamp, price_header]
         if neighborhood_tag:
             heading_parts.append(neighborhood_tag)
         heading = "## " + " | ".join(heading_parts)
 
         lines = [heading, ""]
+
+        if listing.price_history:
+            history_strs = [f"₪{p:,}" for p in listing.price_history]
+            history_strs.append(f"₪{listing.price:,}")
+            history_line = " ➔ ".join(history_strs).replace(",", ",")
+            lines.append(f"- 📜 **Price History:** {history_line}")
 
         # Address
         lines.append(f"- 📍 **Address:** {listing.address_text}")

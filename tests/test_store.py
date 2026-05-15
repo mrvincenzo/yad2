@@ -17,30 +17,37 @@ def store(tmp_path) -> Generator[SeenStore, None, None]:
     s.close()
 
 
-class TestIsSeenMarkSeen:
+class TestGetPriceHistoryMarkSeen:
     def test_new_token_is_not_seen(self, store: SeenStore) -> None:
-        assert store.is_seen("tok1") is False
+        assert store.get_price_history("tok1") is None
 
     def test_marked_token_is_seen(self, store: SeenStore) -> None:
         store.mark_seen("tok1", neighborhood_id=561, price=7500)
-        assert store.is_seen("tok1") is True
+        assert store.get_price_history("tok1") == [7500]
 
     def test_different_tokens_independent(self, store: SeenStore) -> None:
         store.mark_seen("tok1", neighborhood_id=561, price=7500)
-        assert store.is_seen("tok2") is False
+        assert store.get_price_history("tok2") is None
 
     def test_mark_seen_idempotent(self, store: SeenStore) -> None:
-        """Calling mark_seen twice on the same token should not raise."""
+        """Calling mark_seen twice with same price should not raise or add history."""
         store.mark_seen("tok1", neighborhood_id=561, price=7500)
         store.mark_seen("tok1", neighborhood_id=561, price=7500)  # no error
-        assert store.is_seen("tok1") is True
+        assert store.get_price_history("tok1") == [7500]
+
+    def test_mark_seen_price_change(self, store: SeenStore) -> None:
+        """Calling mark_seen with different price should track history."""
+        store.mark_seen("tok1", neighborhood_id=561, price=7500)
+        store.mark_seen("tok1", neighborhood_id=561, price=7200)
+        store.mark_seen("tok1", neighborhood_id=561, price=7000)
+        assert store.get_price_history("tok1") == [7500, 7200, 7000]
 
     def test_multiple_tokens(self, store: SeenStore) -> None:
         tokens = ["a", "b", "c"]
         for t in tokens:
             store.mark_seen(t, neighborhood_id=561, price=6000)
         for t in tokens:
-            assert store.is_seen(t) is True
+            assert store.get_price_history(t) == [6000]
 
 
 class TestLogRun:
@@ -93,10 +100,10 @@ class TestContextManager:
     def test_context_manager_closes(self, tmp_path) -> None:
         with SeenStore(tmp_path / "cm.db") as s:
             s.mark_seen("tok", 561, 7000)
-            assert s.is_seen("tok") is True
+            assert s.get_price_history("tok") == [7000]
         # After __exit__, connection is closed — further calls would raise
         with pytest.raises(Exception):
-            s.is_seen("tok")
+            s.get_price_history("tok")
 
     def test_creates_parent_dirs(self, tmp_path) -> None:
         deep = tmp_path / "a" / "b" / "c" / "test.db"

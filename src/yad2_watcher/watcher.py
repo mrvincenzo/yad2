@@ -85,7 +85,7 @@ class Watcher:
                 summary[nbhd_name] = 0
                 continue
 
-            new_listings = self._find_new(listings)
+            new_listings = self._find_new_or_updated(listings)
             logger.info(
                 "  %s: %d fetched, %d new",
                 nbhd_name,
@@ -105,9 +105,20 @@ class Watcher:
 
         return summary
 
-    def _find_new(self, listings: list[Listing]) -> list[Listing]:
-        """Filter to only listings not yet seen."""
-        return [listing for listing in listings if not self._store.is_seen(listing.token)]
+    def _find_new_or_updated(self, listings: list[Listing]) -> list[Listing]:
+        """Filter to only brand new listings or ones with updated prices."""
+        result = []
+        for listing in listings:
+            history = self._store.get_price_history(listing.token)
+            if history is None:
+                # Brand new
+                listing.price_history = []
+                result.append(listing)
+            elif history and history[-1] != listing.price:
+                # Price changed
+                listing.price_history = history
+                result.append(listing)
+        return result
 
     def _send_and_mark(self, listing: Listing) -> None:
         """Send Telegram alert, journal, and mark as seen (even if send fails)."""

@@ -30,7 +30,18 @@ def _format_message(listing: Listing) -> str:
 
     # Price
     price_str = f"₪{listing.price:,}".replace(",", ",")
-    lines.append(f"💰 {price_str}/חודש")
+    if listing.price_history:
+        old_price = listing.price_history[-1]
+        diff = listing.price - old_price
+        direction = "📉 ירידת מחיר" if diff < 0 else "📈 עליית מחיר"
+        lines.append(f"💰 {price_str}/חודש ({direction})")
+
+        history_strs = [f"₪{p:,}" for p in listing.price_history]
+        history_strs.append(f"₪{listing.price:,}")
+        history_line = " ➔ ".join(history_strs).replace(",", ",")
+        lines.append(f"📜 היסטוריה: {history_line}")
+    else:
+        lines.append(f"💰 {price_str}/חודש")
 
     # Details row
     detail_parts = []
