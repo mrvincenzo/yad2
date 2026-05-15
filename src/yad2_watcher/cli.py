@@ -58,13 +58,29 @@ def _load_config(config_path: Path) -> dict:
     return config
 
 
-def _setup_logging(verbose: bool) -> None:
+def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs") -> None:
+    import logging.handlers
     level = logging.DEBUG if verbose else logging.INFO
+    
+    log_dir = Path(log_path_str).expanduser()
+    log_dir.mkdir(parents=True, exist_ok=True)
+    
+    handlers: list[logging.Handler] = [
+        logging.StreamHandler(sys.stdout),
+        logging.handlers.RotatingFileHandler(
+            log_dir / "watcher.log",
+            maxBytes=5 * 1024 * 1024,  # 5 MB
+            backupCount=5,
+            encoding="utf-8",
+        )
+    ]
+    
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
+        handlers=handlers,
+        force=True,
     )
 
 
@@ -83,7 +99,19 @@ def cli(ctx: click.Context, config: str, verbose: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = Path(config)
     ctx.obj["verbose"] = verbose
-    _setup_logging(verbose)
+    
+    # Try to extract log_dir from config for early logging setup
+    log_dir = "~/.yad2_watcher/logs"
+    try:
+        if Path(config).exists():
+            with open(config) as f:
+                cfg = yaml.safe_load(f)
+                if cfg and "watcher" in cfg and "log_dir" in cfg["watcher"]:
+                    log_dir = cfg["watcher"]["log_dir"]
+    except Exception:
+        pass
+
+    _setup_logging(verbose, log_path_str=log_dir)
 
 
 @cli.command()
