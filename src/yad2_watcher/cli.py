@@ -58,7 +58,7 @@ def _load_config(config_path: Path) -> dict:
     return config
 
 
-def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs") -> None:
+def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs", max_log_size_mb: int = 5) -> None:
     import logging.handlers
     level = logging.DEBUG if verbose else logging.INFO
     
@@ -69,7 +69,7 @@ def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs") ->
         logging.StreamHandler(sys.stdout),
         logging.handlers.RotatingFileHandler(
             log_dir / "watcher.log",
-            maxBytes=5 * 1024 * 1024,  # 5 MB
+            maxBytes=max_log_size_mb * 1024 * 1024,
             backupCount=5,
             encoding="utf-8",
         )
@@ -102,16 +102,20 @@ def cli(ctx: click.Context, config: str, verbose: bool) -> None:
     
     # Try to extract log_dir from config for early logging setup
     log_dir = "~/.yad2_watcher/logs"
+    max_log_size_mb = 5
     try:
         if Path(config).exists():
             with open(config) as f:
                 cfg = yaml.safe_load(f)
-                if cfg and "watcher" in cfg and "log_dir" in cfg["watcher"]:
-                    log_dir = cfg["watcher"]["log_dir"]
+                if cfg and "watcher" in cfg:
+                    if "log_dir" in cfg["watcher"]:
+                        log_dir = cfg["watcher"]["log_dir"]
+                    if "max_log_size_mb" in cfg["watcher"]:
+                        max_log_size_mb = cfg["watcher"]["max_log_size_mb"]
     except Exception:
         pass
 
-    _setup_logging(verbose, log_path_str=log_dir)
+    _setup_logging(verbose, log_path_str=log_dir, max_log_size_mb=max_log_size_mb)
 
 
 @cli.command()

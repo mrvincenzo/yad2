@@ -16,6 +16,8 @@ watcher:
   db_path: "~/.yad2_watcher/seen.db"
   # Path to the directory where rotating log files are stored
   log_dir: "~/.yad2_watcher/logs"
+  # Maximum size of each log file in megabytes
+  max_log_size_mb: 1
   # Request timeout in seconds
   request_timeout: 20
   # Delay between neighborhood fetches (seconds) — be polite
