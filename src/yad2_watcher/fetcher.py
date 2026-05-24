@@ -194,3 +194,41 @@ def fetch_listings(
                 continue
 
     return listings
+
+
+def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
+    """
+    Fetch raw item details and photos by listing token.
+    
+    Returns the parsed dictionary of the 'item' query from __NEXT_DATA__.
+    Raises requests.RequestException on network errors.
+    Raises ValueError if structure is unexpected or CAPTCHA is hit.
+    """
+    url = f"https://www.yad2.co.il/item/{token}"
+    response = requests.get(url, headers=_HEADERS, timeout=timeout)
+    response.raise_for_status()
+
+    html = response.text
+
+    if "ShieldSquare" in html or "shieldsquare" in html.lower():
+        raise ValueError(
+            "Yad2 returned a ShieldSquare CAPTCHA. The request headers may need to be updated."
+        )
+
+    match = _NEXT_DATA_RE.search(html)
+    if not match:
+        raise ValueError("Could not find __NEXT_DATA__ in the Yad2 response.")
+
+    raw_data = json.loads(match.group(1))
+
+    try:
+        queries = raw_data["props"]["pageProps"]["dehydratedState"]["queries"]
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"Unexpected __NEXT_DATA__ structure: {exc}") from exc
+
+    for query in queries:
+        key = query.get("queryKey", [])
+        if isinstance(key, list) and len(key) >= 2 and key[0] == "item" and key[1] == token:
+            return query.get("state", {}).get("data", {})
+
+    raise ValueError(f"Could not find 'item' query for token '{token}' in __NEXT_DATA__.")

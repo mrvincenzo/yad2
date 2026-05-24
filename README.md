@@ -103,6 +103,7 @@ yad2-watcher watch -i 15      # Loop with custom interval (15 min)
 yad2-watcher get-chat-id      # Find your Telegram chat IDs
 yad2-watcher test-notify      # Send a test message to all configured chats
 yad2-watcher status           # Show DB stats and recent runs
+yad2-watcher download <url>   # Download apartment details and photos to downloads/<token>
 ```
 
 ## Adding neighborhoods

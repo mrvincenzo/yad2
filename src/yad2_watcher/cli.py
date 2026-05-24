@@ -11,19 +11,23 @@ Commands:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import click
+import requests
 import yaml
 from dotenv import load_dotenv
 from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
+from .fetcher import fetch_item_data
 from .notifier import TelegramNotifier
 from .store import SeenStore
 from .watcher import Watcher
@@ -58,13 +62,16 @@ def _load_config(config_path: Path) -> dict:
     return config
 
 
-def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs", max_log_size_mb: int = 5) -> None:
+def _setup_logging(
+    verbose: bool, log_path_str: str = "~/.yad2_watcher/logs", max_log_size_mb: int = 5
+) -> None:
     import logging.handlers
+
     level = logging.DEBUG if verbose else logging.INFO
-    
+
     log_dir = Path(log_path_str).expanduser()
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     handlers: list[logging.Handler] = [
         logging.StreamHandler(sys.stdout),
         logging.handlers.RotatingFileHandler(
@@ -72,9 +79,9 @@ def _setup_logging(verbose: bool, log_path_str: str = "~/.yad2_watcher/logs", ma
             maxBytes=max_log_size_mb * 1024 * 1024,
             backupCount=5,
             encoding="utf-8",
-        )
+        ),
     ]
-    
+
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -99,7 +106,7 @@ def cli(ctx: click.Context, config: str, verbose: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = Path(config)
     ctx.obj["verbose"] = verbose
-    
+
     # Try to extract log_dir from config for early logging setup
     log_dir = "~/.yad2_watcher/logs"
     max_log_size_mb = 5
@@ -288,6 +295,85 @@ def test_notify(ctx: click.Context) -> None:
     else:
         console.print("[red]✗ Failed to send test message. Check the logs.[/red]")
         sys.exit(1)
+
+
+@cli.command("download")
+@click.argument("link_or_token")
+def download_apartment(link_or_token: str) -> None:
+    """Download apartment details and photos by Yad2 URL or token."""
+
+    # Extract token
+    token = link_or_token
+    if "http" in token or "yad2.co.il" in token:
+        parsed = urlparse(token)
+        token = parsed.path.rstrip("/").split("/")[-1]
+
+    if not token:
+        console.print("[red]✗ Could not extract a valid token from the input.[/red]")
+        sys.exit(1)
+
+    console.print(f"[dim]Fetching data for apartment [bold]{token}[/bold]...[/dim]")
+    try:
+        data = fetch_item_data(token)
+    except Exception as e:
+        console.print(f"[red]✗ Failed to fetch data: {e}[/red]")
+        sys.exit(1)
+
+    out_dir = Path("downloads") / token
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save raw JSON
+    json_path = out_dir / "details.json"
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    # Save a human-readable markdown summary
+    md_path = out_dir / "summary.md"
+    with open(md_path, "w", encoding="utf-8") as f:
+        meta = data.get("metaData", {})
+        addr = data.get("address", {})
+        addr_parts = [
+            addr.get("street", {}).get("text", ""),
+            str(addr.get("house", {}).get("number", "")),
+            addr.get("neighborhood", {}).get("text", ""),
+            addr.get("city", {}).get("text", ""),
+        ]
+        addr_str = ", ".join(filter(bool, addr_parts))
+
+        f.write(f"# Apartment Details: {token}\n\n")
+        f.write(f"- **Price:** {data.get('price', 'N/A')} ₪\n")
+        f.write(f"- **Address:** {addr_str}\n\n")
+
+        f.write("## Description\n\n")
+        f.write(meta.get("description", "No description provided.") + "\n")
+
+    # Download images
+    images = data.get("metaData", {}).get("images", [])
+    if images:
+        console.print(f"Downloading {len(images)} photo(s) to [bold]{out_dir}[/bold]...")
+        for i, img_url in enumerate(images, 1):
+            try:
+                resp = requests.get(img_url, stream=True, timeout=10)
+                resp.raise_for_status()
+                # Try to preserve original extension if possible
+                ext = ".jpg"
+                if "jpeg" in img_url.lower():
+                    ext = ".jpeg"
+                elif "png" in img_url.lower():
+                    ext = ".png"
+                elif "webp" in img_url.lower():
+                    ext = ".webp"
+
+                img_path = out_dir / f"photo_{i:02d}{ext}"
+                with open(img_path, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            except Exception as e:
+                console.print(f"[yellow]⚠ Failed to download image {img_url}: {e}[/yellow]")
+    else:
+        console.print("[dim]No photos found for this listing.[/dim]")
+
+    console.print(f"[green]✓ Done! All files saved in [bold]{out_dir.absolute()}[/bold][/green]")
 
 
 def main() -> None:

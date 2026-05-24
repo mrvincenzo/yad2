@@ -1,4 +1,6 @@
+downloads/
 logs/
+
 .python-version
 *.db
 .env
