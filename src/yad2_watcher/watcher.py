@@ -8,7 +8,7 @@ import logging
 import time
 from typing import Any
 
-from .fetcher import Listing, fetch_listings
+from .fetcher import Listing, fetch_item_customer, fetch_listings
 from .journal import Journal, NullJournal
 from .notifier import TelegramNotifier
 from .store import SeenStore
@@ -122,6 +122,7 @@ class Watcher:
 
     def _send_and_mark(self, listing: Listing) -> None:
         """Send Telegram alert, journal, and mark as seen (even if send fails)."""
+        listing.phone = fetch_item_customer(listing.token, timeout=self._timeout)
         try:
             success = self._notifier.send_photo(listing)
             if success:

@@ -116,6 +116,10 @@ class Journal:
         type_parts = [ad_label] + list(listing.tags[:3])
         lines.append("- 🏷️ **Type:** " + " · ".join(type_parts))
 
+        # Phone
+        if listing.phone:
+            lines.append(f"- 📞 **Phone:** {listing.phone}")
+
         # Link
         lines.append(f"- 🔗 [פתח מודעה]({listing.url})")
 

@@ -69,6 +69,7 @@ class Listing:
     # Which search neighborhood generated this listing
     search_neighborhood_id: int = 0
     search_neighborhood_name: str = ""
+    phone: str | None = None
 
     @property
     def url(self) -> str:
@@ -194,6 +195,37 @@ def fetch_listings(
                 continue
 
     return listings
+
+
+_GW_HEADERS = {
+    "Accept": "application/json",
+    "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+    "User-Agent": _HEADERS["User-Agent"],
+    "Sec-Ch-Ua": _HEADERS["Sec-Ch-Ua"],
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"macOS"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
+}
+
+
+def fetch_item_customer(token: str, timeout: int = 20) -> str | None:
+    """
+    Fetch the seller phone number for a listing via the Yad2 gateway API.
+
+    Returns a phone string (e.g. "052-4283314") or None if unavailable.
+    Does not raise — failures are silent so a missing phone never blocks alerting.
+    """
+    url = f"https://gw.yad2.co.il/realestate-item/{token}/customer"
+    headers = {**_GW_HEADERS, "Referer": f"https://www.yad2.co.il/item/{token}"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        return data.get("phone") or data.get("brokerPhone") or None
+    except Exception:
+        return None
 
 
 def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:

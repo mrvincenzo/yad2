@@ -66,6 +66,10 @@ def _format_message(listing: Listing) -> str:
         tag_line += " · " + " · ".join(listing.tags[:3])  # cap at 3 tags
     lines.append(f"🏷️ {tag_line}")
 
+    # Phone
+    if listing.phone:
+        lines.append(f"📞 {listing.phone}")
+
     # Link
     lines.append("")
     lines.append(f"🔗 [פתח מודעה]({listing.url})")

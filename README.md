@@ -7,7 +7,8 @@ Automatically monitors Yad2 for new apartment listings and sends Telegram alerts
 - Polls configured neighborhood search URLs every 30 minutes
 - Extracts listings from Yad2's server-rendered `__NEXT_DATA__` JSON (no headless browser needed)
 - Tracks seen listing tokens in a local SQLite DB to avoid duplicate alerts
-- Sends formatted Telegram messages to one or more chats with listing details and a direct link
+- Fetches the seller's phone number via the Yad2 gateway API (works for both private and agency listings)
+- Sends formatted Telegram messages to one or more chats with listing details, phone number, and a direct link
 - Appends every new listing to a **monthly Markdown journal** (`~/.yad2/journal/`) for persistent history and Obsidian integration
 
 ## Setup
@@ -141,6 +142,7 @@ Each entry looks like:
 - 📍 **Address:** דוד שמעוני 10, גבעת הורדים
 - 🛏️ **Rooms:** 4 | **SQM:** 90 | **Floor:** 2
 - 🏷️ **Type:** פרטי · מרפסת · חניה
+- 📞 **Phone:** 052-4283314
 - 🔗 [פתח מודעה](https://www.yad2.co.il/item/abc123)
 - ⏰ **Seen at:** 2026-04-19 22:31:05
 ```
