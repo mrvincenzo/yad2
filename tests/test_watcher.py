@@ -49,6 +49,7 @@ class TestRunOnce:
     def test_new_listings_are_sent(self, mocker, tmp_path) -> None:
         listings = [_make_listing("tok1"), _make_listing("tok2")]
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=listings)
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
         with Watcher(_make_config(tmp_path)) as w:
             w._notifier.send_photo = mocker.MagicMock(return_value=True)
             summary = w.run_once()
@@ -60,6 +61,7 @@ class TestRunOnce:
     def test_already_seen_listings_not_resent(self, mocker, tmp_path) -> None:
         listing = _make_listing("tok1")
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=[listing])
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
 
         with Watcher(_make_config(tmp_path)) as w:
             w._notifier.send_photo = mocker.MagicMock(return_value=True)
@@ -87,6 +89,7 @@ class TestRunOnce:
         """Even if Telegram send fails, the token is marked seen to prevent spam."""
         listing = _make_listing("tok1")
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=[listing])
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
 
         with Watcher(_make_config(tmp_path)) as w:
             w._notifier.send_photo = mocker.MagicMock(return_value=False)
@@ -104,12 +107,28 @@ class TestRunOnce:
             summary = w.run_once()
         assert set(summary.keys()) == {"גבעת הורדים", "קטמון"}
 
+    def test_phone_fetched_and_set_on_listing(self, mocker, tmp_path) -> None:
+        listing = _make_listing("tok1")
+        mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=[listing])
+        mock_phone = mocker.patch(
+            "yad2_watcher.watcher.fetch_item_customer", return_value="052-9876543"
+        )
+
+        with Watcher(_make_config(tmp_path)) as w:
+            w._notifier.send_photo = mocker.MagicMock(return_value=True)
+            w.run_once()
+
+        mock_phone.assert_called_once_with("tok1", timeout=5)
+        sent_listing = w._notifier.send_photo.call_args[0][0]
+        assert sent_listing.phone == "052-9876543"
+
     def test_multiple_chat_ids_used(self, mocker, tmp_path) -> None:
         # Use unique tokens per neighborhood so both are "new"
         def fetch_side_effect(url_slug, neighborhood_id, neighborhood_name, **kw):
             return [_make_listing(f"tok_{neighborhood_id}", neighborhood_id)]
 
         mocker.patch("yad2_watcher.watcher.fetch_listings", side_effect=fetch_side_effect)
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
 
         with Watcher(_make_config(tmp_path, chat_ids=["111", "222"])) as w:
             mock_send = mocker.patch.object(w._notifier, "send_photo", return_value=True)

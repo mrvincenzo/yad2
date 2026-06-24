@@ -96,6 +96,16 @@ class TestFormatMessage:
         msg = _format_message(minimal_listing)
         assert "מ״ר" not in msg
 
+    def test_phone_shown_when_present(self, private_listing: Listing) -> None:
+        private_listing.phone = "052-4283314"
+        msg = _format_message(private_listing)
+        assert "052-4283314" in msg
+
+    def test_phone_omitted_when_none(self, private_listing: Listing) -> None:
+        private_listing.phone = None
+        msg = _format_message(private_listing)
+        assert "📞" not in msg
+
 
 # ---------------------------------------------------------------------------
 # TelegramNotifier

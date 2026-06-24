@@ -7,7 +7,7 @@ import json
 import pytest
 import requests
 
-from yad2_watcher.fetcher import Listing, _parse_listing, fetch_listings
+from yad2_watcher.fetcher import Listing, _parse_listing, fetch_item_customer, fetch_listings
 
 from .conftest import RAW_AGENCY, RAW_MINIMAL, RAW_PRIVATE, make_next_data_html
 
@@ -216,3 +216,58 @@ class TestFetchListings:
         assert params["neighborhood"] == 561
         assert params["minPrice"] == 6000
         assert params["maxPrice"] == 9000
+
+
+# ---------------------------------------------------------------------------
+# fetch_item_customer
+# ---------------------------------------------------------------------------
+
+
+class TestFetchItemCustomer:
+    def _ok(self, mocker, data: dict):
+        resp = mocker.MagicMock()
+        resp.raise_for_status = mocker.MagicMock()
+        resp.json.return_value = {"data": data, "message": "OK"}
+        return resp
+
+    def test_returns_phone_on_success(self, mocker) -> None:
+        mocker.patch(
+            "yad2_watcher.fetcher.requests.get",
+            return_value=self._ok(mocker, {"name": "מאיר", "phone": "052-4283314"}),
+        )
+        assert fetch_item_customer("abc123") == "052-4283314"
+
+    def test_falls_back_to_broker_phone(self, mocker) -> None:
+        mocker.patch(
+            "yad2_watcher.fetcher.requests.get",
+            return_value=self._ok(mocker, {"name": "סוכן", "brokerPhone": "055-9999999"}),
+        )
+        assert fetch_item_customer("abc123") == "055-9999999"
+
+    def test_returns_none_when_no_phone_field(self, mocker) -> None:
+        mocker.patch(
+            "yad2_watcher.fetcher.requests.get",
+            return_value=self._ok(mocker, {"name": "מאיר", "id": 123}),
+        )
+        assert fetch_item_customer("abc123") is None
+
+    def test_returns_none_on_http_error(self, mocker) -> None:
+        resp = mocker.MagicMock()
+        resp.raise_for_status.side_effect = requests.HTTPError("404")
+        mocker.patch("yad2_watcher.fetcher.requests.get", return_value=resp)
+        assert fetch_item_customer("abc123") is None
+
+    def test_returns_none_on_network_error(self, mocker) -> None:
+        mocker.patch(
+            "yad2_watcher.fetcher.requests.get",
+            side_effect=requests.ConnectionError("unreachable"),
+        )
+        assert fetch_item_customer("abc123") is None
+
+    def test_calls_correct_url(self, mocker) -> None:
+        mock_get = mocker.patch(
+            "yad2_watcher.fetcher.requests.get",
+            return_value=self._ok(mocker, {"phone": "052-1111111"}),
+        )
+        fetch_item_customer("tok999")
+        assert mock_get.call_args[0][0] == "https://gw.yad2.co.il/realestate-item/tok999/customer"

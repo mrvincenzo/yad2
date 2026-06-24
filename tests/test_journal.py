@@ -114,6 +114,20 @@ class TestJournalEntryFormat:
         content = (tmp_path / "journal_2026-04.md").read_text(encoding="utf-8")
         assert "#neighborhood/" not in content
 
+    def test_entry_contains_phone_when_present(self, tmp_path: Path) -> None:
+        listing = _make_listing()
+        listing.phone = "052-4283314"
+        Journal(tmp_path).append(listing, ts=_ts(2026, 4, 19))
+        content = (tmp_path / "journal_2026-04.md").read_text(encoding="utf-8")
+        assert "052-4283314" in content
+
+    def test_entry_omits_phone_when_none(self, tmp_path: Path) -> None:
+        listing = _make_listing()
+        listing.phone = None
+        Journal(tmp_path).append(listing, ts=_ts(2026, 4, 19))
+        content = (tmp_path / "journal_2026-04.md").read_text(encoding="utf-8")
+        assert "📞" not in content
+
     def test_multiple_appends_accumulate(self, tmp_path: Path) -> None:
         """Two appends to the same month should both appear in the file."""
         journal = Journal(tmp_path)
@@ -185,6 +199,7 @@ class TestWatcherJournalIntegration:
 
         listings = [_make_listing("tok1"), _make_listing("tok2")]
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=listings)
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
 
         with Watcher(self._make_config(tmp_path)) as w:
             w._notifier.send_photo = mocker.MagicMock(return_value=True)
@@ -198,6 +213,7 @@ class TestWatcherJournalIntegration:
 
         listing = _make_listing("tok1")
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=[listing])
+        mocker.patch("yad2_watcher.watcher.fetch_item_customer", return_value=None)
 
         with Watcher(self._make_config(tmp_path)) as w:
             w._notifier.send_photo = mocker.MagicMock(return_value=True)
