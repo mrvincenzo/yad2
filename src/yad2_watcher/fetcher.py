@@ -264,3 +264,10 @@ def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
             return query.get("state", {}).get("data", {})
 
     raise ValueError(f"Could not find 'item' query for token '{token}' in __NEXT_DATA__.")
+
+
+def fetch_single_listing(token: str, *, timeout: int = 20) -> Listing:
+    """Fetch and parse a single listing by token from its item page."""
+    raw = fetch_item_data(token, timeout=timeout)
+    ad_type = raw.get("adType") or raw.get("advertiserType") or "private"
+    return _parse_listing(raw, ad_type)

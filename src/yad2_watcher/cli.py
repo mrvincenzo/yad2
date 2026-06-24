@@ -27,7 +27,7 @@ from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
 
-from .fetcher import fetch_item_data
+from .fetcher import fetch_item_customer, fetch_item_data, fetch_single_listing
 from .notifier import TelegramNotifier
 from .store import SeenStore
 from .watcher import Watcher
@@ -294,6 +294,48 @@ def test_notify(ctx: click.Context) -> None:
         console.print("[green]✓ Test message sent successfully![/green]")
     else:
         console.print("[red]✗ Failed to send test message. Check the logs.[/red]")
+        sys.exit(1)
+
+
+@cli.command("send-listing")
+@click.argument("link_or_token")
+@click.pass_context
+def send_listing_cmd(ctx: click.Context, link_or_token: str) -> None:
+    """Fetch a Yad2 listing by URL or token and send it as a Telegram alert."""
+    config = _load_config(ctx.obj["config_path"])
+    telegram_cfg = config.get("telegram", {})
+    bot_token = telegram_cfg["bot_token"]
+    chat_ids = [str(c) for c in telegram_cfg.get("chat_ids", [])]
+
+    if not chat_ids:
+        console.print("[yellow]chat_ids is not set.[/yellow] Run [bold]get-chat-id[/bold] first.")
+        sys.exit(1)
+
+    token = link_or_token
+    if "http" in token or "yad2" in token:
+        parsed = urlparse(token)
+        token = parsed.path.rstrip("/").split("/")[-1]
+
+    if not token:
+        console.print("[red]✗ Could not extract a valid token from the input.[/red]")
+        sys.exit(1)
+
+    console.print(f"[dim]Fetching listing [bold]{token}[/bold]...[/dim]")
+    try:
+        listing = fetch_single_listing(token)
+    except Exception as e:
+        console.print(f"[red]✗ Failed to fetch listing: {e}[/red]")
+        sys.exit(1)
+
+    listing.phone = fetch_item_customer(token)
+
+    notifier = TelegramNotifier(bot_token, chat_ids)
+    console.print(f"Sending to {len(chat_ids)} chat(s)...")
+    success = notifier.send_photo(listing)
+    if success:
+        console.print("[green]✓ Listing sent successfully![/green]")
+    else:
+        console.print("[red]✗ Failed to send listing. Check the logs.[/red]")
         sys.exit(1)
 
 
