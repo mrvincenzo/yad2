@@ -8,6 +8,8 @@ telegram:
   chat_ids:
     - "422717997" # me
     - "8233983837" # father
+  error_chat_ids:
+    - "422717997" # Send errors here
 
 watcher:
   # How often to poll each neighborhood (in minutes)

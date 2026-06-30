@@ -26,9 +26,11 @@ class Watcher:
         self._config = config
         telegram_cfg = config["telegram"]
         chat_ids = [str(c) for c in telegram_cfg.get("chat_ids", [])]
+        error_chat_ids = [str(c) for c in telegram_cfg.get("error_chat_ids", [])]
         self._notifier = TelegramNotifier(
             bot_token=telegram_cfg["bot_token"],
             chat_ids=chat_ids,
+            error_chat_ids=error_chat_ids,
         )
         watcher_cfg = config.get("watcher", {})
         self._db_path = watcher_cfg.get("db_path", "~/.yad2_watcher/seen.db")
@@ -82,6 +84,7 @@ class Watcher:
             except Exception as exc:
                 logger.error("Failed to fetch %s (%s): %s", nbhd_name, nbhd_id, exc)
                 self._store.log_run(nbhd_id, 0, 0, str(exc))
+                self._notifier.send_error(f"Failed to fetch {nbhd_name} ({nbhd_id}): `{exc}`")
                 summary[nbhd_name] = 0
                 continue
 
@@ -129,8 +132,10 @@ class Watcher:
                 logger.info("  ✓ Sent alert for token %s (%s)", listing.token, listing.url)
             else:
                 logger.warning("  ✗ Failed to send alert for token %s", listing.token)
+                self._notifier.send_error(f"Failed to send alert for listing {listing.token} ({listing.url})")
         except Exception as exc:
             logger.error("  ✗ Error sending alert for %s: %s", listing.token, exc)
+            self._notifier.send_error(f"Error sending alert for listing {listing.token} ({listing.url}): `{exc}`")
         finally:
             # Always mark as seen and journal — prevents re-alerting on send failures
             self._store.mark_seen(listing.token, listing.search_neighborhood_id, listing.price)

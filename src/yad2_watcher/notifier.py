@@ -80,9 +80,10 @@ def _format_message(listing: Listing) -> str:
 class TelegramNotifier:
     """Sends listing alerts to one or more Telegram chats via Bot API."""
 
-    def __init__(self, bot_token: str, chat_ids: list[str]) -> None:
+    def __init__(self, bot_token: str, chat_ids: list[str], error_chat_ids: list[str] | None = None) -> None:
         self._token = bot_token
         self._chat_ids = chat_ids
+        self._error_chat_ids = error_chat_ids or []
 
     def _api_url(self, method: str) -> str:
         return TELEGRAM_API.format(token=self._token, method=method)
@@ -98,6 +99,17 @@ class TelegramNotifier:
         """Send a plain text message to all configured chats."""
         return all(
             self._send_message(cid, text, disable_web_page_preview=True) for cid in self._chat_ids
+        )
+
+    def send_error(self, error_msg: str) -> bool:
+        """Send an error message to the designated error chats."""
+        if not self._error_chat_ids:
+            return False
+        
+        # Simple string message format as requested by user
+        text = f"⚠️ *Yad2 Watcher Error*\n\n{error_msg}"
+        return all(
+            self._send_message(cid, text, disable_web_page_preview=True) for cid in self._error_chat_ids
         )
 
     def _send_message(

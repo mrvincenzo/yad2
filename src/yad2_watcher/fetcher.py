@@ -148,9 +148,10 @@ def fetch_listings(
     html = response.text
 
     # Sanity check — if we hit the CAPTCHA page, surface it clearly
-    if "ShieldSquare" in html or "shieldsquare" in html.lower():
+    html_lower = html.lower()
+    if "shieldsquare" in html_lower or "radware" in html_lower or "validate.perfdrive.com" in html_lower:
         raise ValueError(
-            "Yad2 returned a ShieldSquare CAPTCHA. The request headers may need to be updated."
+            "Yad2 returned a Radware/ShieldSquare CAPTCHA. The request headers may need to be updated."
         )
 
     match = _NEXT_DATA_RE.search(html)
@@ -242,9 +243,10 @@ def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
 
     html = response.text
 
-    if "ShieldSquare" in html or "shieldsquare" in html.lower():
+    html_lower = html.lower()
+    if "shieldsquare" in html_lower or "radware" in html_lower or "validate.perfdrive.com" in html_lower:
         raise ValueError(
-            "Yad2 returned a ShieldSquare CAPTCHA. The request headers may need to be updated."
+            "Yad2 returned a Radware/ShieldSquare CAPTCHA. The request headers may need to be updated."
         )
 
     match = _NEXT_DATA_RE.search(html)

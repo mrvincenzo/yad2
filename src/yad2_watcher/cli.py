@@ -195,6 +195,7 @@ def watch(ctx: click.Context, interval: int | None) -> None:
                 break
             except Exception as exc:
                 logging.exception("Unexpected error during scan: %s", exc)
+                watcher._notifier.send_error(f"Unexpected error during continuous scan: `{exc}`")
                 rprint(f"[red]Error: {exc}[/red]. Retrying in {poll_minutes} min...")
                 time.sleep(poll_seconds)
 
