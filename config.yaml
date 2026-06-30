@@ -22,8 +22,10 @@ watcher:
   max_log_size_mb: 1
   # Request timeout in seconds
   request_timeout: 20
-  # Delay between neighborhood fetches (seconds) — be polite
+  # Delay between neighborhood fetches (seconds) — ±50% jitter is applied automatically
   fetch_delay_seconds: 5
+  # Path where session cookies are persisted between runs (helps avoid CAPTCHA)
+  cookies_path: "~/.yad2_watcher/cookies.json"
   # Journal: append every new listing to a monthly Markdown file
   journal_enabled: true
   journal_path: "~/.yad2_watcher/journal"

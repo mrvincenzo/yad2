@@ -4,9 +4,15 @@ watcher.py — Core orchestration: fetch → diff → notify for all neighborhoo
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import random
 import time
+from pathlib import Path
 from typing import Any
+
+from curl_cffi.requests import Session  # type: ignore[import-untyped]
 
 from .fetcher import CaptchaBlockError, Listing, fetch_item_customer, fetch_listings
 from .journal import Journal, NullJournal
@@ -54,12 +60,48 @@ class Watcher:
 
         self._neighborhoods = config.get("neighborhoods", [])
 
+        # Persistent cookie store — makes us look like a returning browser to
+        # ShieldSquare rather than a fresh bot session every hour.
+        cookies_path_raw = watcher_cfg.get("cookies_path", "~/.yad2_watcher/cookies.json")
+        self._cookies_path = Path(os.path.expanduser(cookies_path_raw))
+        self._session = self._build_session()
+
+    # ------------------------------------------------------------------
+    # Session management
+    # ------------------------------------------------------------------
+
+    def _build_session(self) -> Session:
+        """Create a curl_cffi Session and pre-load persisted cookies."""
+        session = Session(impersonate="chrome")
+        if self._cookies_path.exists():
+            try:
+                raw = json.loads(self._cookies_path.read_text())
+                for name, value in raw.items():
+                    session.cookies.set(name, value)  # type: ignore[attr-defined]
+                logger.debug("Loaded %d cookies from %s", len(raw), self._cookies_path)
+            except Exception as exc:
+                logger.warning("Could not load cookies from %s: %s", self._cookies_path, exc)
+        return session
+
+    def _save_cookies(self) -> None:
+        """Persist current session cookies to disk for the next run."""
+        try:
+            self._cookies_path.parent.mkdir(parents=True, exist_ok=True)
+            cookies = dict(self._session.cookies)  # type: ignore[attr-defined]
+            self._cookies_path.write_text(json.dumps(cookies))
+            logger.debug("Saved %d cookies to %s", len(cookies), self._cookies_path)
+        except Exception as exc:
+            logger.warning("Could not save cookies to %s: %s", self._cookies_path, exc)
+
     def run_once(self) -> dict[str, int]:
         """
         Execute one full scan across all neighborhoods.
         Returns a summary dict: {neighborhood_name: new_listing_count}.
         """
         summary: dict[str, int] = {}
+
+        # Brief random pre-flight pause — simulates page load, not a robot.
+        time.sleep(random.uniform(0.5, 2.5))
 
         for i, nbhd in enumerate(self._neighborhoods):
             nbhd_id = nbhd["id"]
@@ -79,6 +121,7 @@ class Watcher:
                     max_rooms=self._max_rooms,
                     area=self._area,
                     city=self._city,
+                    session=self._session,
                     timeout=self._timeout,
                 )
             except CaptchaBlockError as exc:
@@ -109,10 +152,12 @@ class Watcher:
             self._store.log_run(nbhd_id, len(listings), len(new_listings))
             summary[nbhd_name] = len(new_listings)
 
-            # Polite delay between neighborhoods (except last)
+            # Polite delay between neighborhoods (except last), with ±50% jitter.
             if i < len(self._neighborhoods) - 1:
-                time.sleep(self._fetch_delay)
+                jitter = random.uniform(0.5, 1.5)
+                time.sleep(self._fetch_delay * jitter)
 
+        self._save_cookies()
         return summary
 
     def _find_new_or_updated(self, listings: list[Listing]) -> list[Listing]:
@@ -132,7 +177,7 @@ class Watcher:
 
     def _send_and_mark(self, listing: Listing) -> None:
         """Send Telegram alert, journal, and mark as seen (even if send fails)."""
-        listing.phone = fetch_item_customer(listing.token, timeout=self._timeout)
+        listing.phone = fetch_item_customer(listing.token, session=self._session, timeout=self._timeout)
         try:
             success = self._notifier.send_photo(listing)
             if success:
@@ -153,6 +198,7 @@ class Watcher:
             self._journal.append(listing)
 
     def close(self) -> None:
+        self._session.close()  # type: ignore[attr-defined]
         self._store.close()
 
     def __enter__(self) -> Watcher:

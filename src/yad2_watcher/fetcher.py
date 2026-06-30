@@ -3,7 +3,8 @@ fetcher.py — Fetches Yad2 search results by parsing the __NEXT_DATA__ JSON
 embedded in the server-side-rendered Next.js page.
 
 No Playwright, no headless browser, no proxy needed.
-Standard browser request headers are sufficient (verified April 2026).
+curl_cffi is used instead of requests so that Chrome's exact TLS/HTTP2
+fingerprint (JA3/JA4) is reproduced — bare requests gets ShieldSquare CAPTCHA.
 """
 
 from __future__ import annotations
@@ -13,7 +14,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import requests
+from curl_cffi import requests  # type: ignore[import-untyped]
+from curl_cffi.requests import Session  # type: ignore[import-untyped]
 
 
 class CaptchaBlockError(Exception):
@@ -23,8 +25,9 @@ class CaptchaBlockError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Request headers that mimic a real Chrome browser on macOS
-# These are required — bare curl gets ShieldSquare CAPTCHA, these do not.
+# Request headers that mimic a real Chrome browser on macOS.
+# curl_cffi reproduces Chrome's TLS/HTTP2 fingerprint; these headers complete
+# the picture at the application layer.
 # ---------------------------------------------------------------------------
 _HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",  # noqa: E501
@@ -129,6 +132,7 @@ def fetch_listings(
     max_rooms: float,
     area: int,
     city: int,
+    session: Session | None = None,
     timeout: int = 20,
 ) -> list[Listing]:
     """
@@ -149,7 +153,8 @@ def fetch_listings(
     }
 
     url = BASE_URL.format(slug=url_slug)
-    response = requests.get(url, params=params, headers=_HEADERS, timeout=timeout)
+    _session = session or requests
+    response = _session.get(url, params=params, headers=_HEADERS, impersonate="chrome", timeout=timeout)
     response.raise_for_status()
 
     html = response.text
@@ -222,7 +227,7 @@ _GW_HEADERS = {
 }
 
 
-def fetch_item_customer(token: str, timeout: int = 20) -> str | None:
+def fetch_item_customer(token: str, session: Session | None = None, timeout: int = 20) -> str | None:
     """
     Fetch the seller phone number for a listing via the Yad2 gateway API.
 
@@ -231,8 +236,9 @@ def fetch_item_customer(token: str, timeout: int = 20) -> str | None:
     """
     url = f"https://gw.yad2.co.il/realestate-item/{token}/customer"
     headers = {**_GW_HEADERS, "Referer": f"https://www.yad2.co.il/item/{token}"}
+    _session = session or requests
     try:
-        resp = requests.get(url, headers=headers, timeout=timeout)
+        resp = _session.get(url, headers=headers, impersonate="chrome", timeout=timeout)
         resp.raise_for_status()
         data = resp.json().get("data", {})
         return data.get("phone") or data.get("brokerPhone") or None
@@ -240,7 +246,7 @@ def fetch_item_customer(token: str, timeout: int = 20) -> str | None:
         return None
 
 
-def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
+def fetch_item_data(token: str, session: Session | None = None, timeout: int = 20) -> dict[str, Any]:
     """
     Fetch raw item details and photos by listing token.
 
@@ -249,7 +255,8 @@ def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
     Raises ValueError if structure is unexpected or CAPTCHA is hit.
     """
     url = f"https://www.yad2.co.il/item/{token}"
-    response = requests.get(url, headers=_HEADERS, timeout=timeout)
+    _session = session or requests
+    response = _session.get(url, headers=_HEADERS, impersonate="chrome", timeout=timeout)
     response.raise_for_status()
 
     html = response.text

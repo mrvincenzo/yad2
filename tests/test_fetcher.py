@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
-import requests
+from curl_cffi import requests  # type: ignore[import-untyped]
 
 from yad2_watcher.fetcher import (
     CaptchaBlockError,
@@ -184,9 +184,9 @@ class TestFetchListings:
 
     def test_raises_on_http_error(self, mocker) -> None:
         mock_resp = mocker.MagicMock()
-        mock_resp.raise_for_status.side_effect = requests.HTTPError("403")
+        mock_resp.raise_for_status.side_effect = requests.errors.RequestsError("403")
         mocker.patch("yad2_watcher.fetcher.requests.get", return_value=mock_resp)
-        with pytest.raises(requests.HTTPError):
+        with pytest.raises(requests.errors.RequestsError):
             fetch_listings(
                 url_slug="jerusalem-area",
                 neighborhood_id=561,
@@ -259,14 +259,14 @@ class TestFetchItemCustomer:
 
     def test_returns_none_on_http_error(self, mocker) -> None:
         resp = mocker.MagicMock()
-        resp.raise_for_status.side_effect = requests.HTTPError("404")
+        resp.raise_for_status.side_effect = requests.errors.RequestsError("404")
         mocker.patch("yad2_watcher.fetcher.requests.get", return_value=resp)
         assert fetch_item_customer("abc123") is None
 
     def test_returns_none_on_network_error(self, mocker) -> None:
         mocker.patch(
             "yad2_watcher.fetcher.requests.get",
-            side_effect=requests.ConnectionError("unreachable"),
+            side_effect=requests.errors.RequestsError("unreachable"),
         )
         assert fetch_item_customer("abc123") is None
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from yad2_watcher.fetcher import Listing
 from yad2_watcher.watcher import Watcher
 
@@ -16,6 +18,7 @@ def _make_config(tmp_path, chat_ids=None) -> dict:
         },
         "watcher": {
             "db_path": str(tmp_path / "test.db"),
+            "cookies_path": str(tmp_path / "cookies.json"),
             "request_timeout": 5,
             "fetch_delay_seconds": 0,  # no sleep in tests
             "interval_minutes": 30,
@@ -33,6 +36,13 @@ def _make_config(tmp_path, chat_ids=None) -> dict:
             {"id": 544, "name": "קטמון", "url_slug": "jerusalem-area"},
         ],
     }
+
+
+@pytest.fixture(autouse=True)
+def _no_sleep_no_cookies(mocker):
+    """Suppress time.sleep and cookie I/O in all watcher tests."""
+    mocker.patch("yad2_watcher.watcher.time.sleep")
+    mocker.patch.object(Watcher, "_save_cookies")
 
 
 def _make_listing(token: str, nbhd_id: int = 561) -> Listing:
@@ -108,6 +118,8 @@ class TestRunOnce:
         assert set(summary.keys()) == {"גבעת הורדים", "קטמון"}
 
     def test_phone_fetched_and_set_on_listing(self, mocker, tmp_path) -> None:
+        from unittest.mock import ANY
+
         listing = _make_listing("tok1")
         mocker.patch("yad2_watcher.watcher.fetch_listings", return_value=[listing])
         mock_phone = mocker.patch(
@@ -118,7 +130,7 @@ class TestRunOnce:
             w._notifier.send_photo = mocker.MagicMock(return_value=True)
             w.run_once()
 
-        mock_phone.assert_called_once_with("tok1", timeout=5)
+        mock_phone.assert_called_once_with("tok1", session=ANY, timeout=5)
         sent_listing = w._notifier.send_photo.call_args[0][0]
         assert sent_listing.phone == "052-9876543"
 
