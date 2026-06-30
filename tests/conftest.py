@@ -134,3 +134,31 @@ def make_next_data_html(private: list | None = None, agency: list | None = None)
         f'<script id="__NEXT_DATA__" type="application/json">{json.dumps(next_data)}</script>'
         "</body></html>"
     )
+
+
+def make_feed_response(
+    private: list | None = None,
+    agency: list | None = None,
+    platinum: list | None = None,
+    king: list | None = None,
+    total_pages: int = 1,
+) -> dict:
+    """Build a feed API JSON response as returned by gw.yad2.co.il/realestate-feed/rent/feed.
+
+    Used as the primary mock format for TestFetchListings.
+    """
+    sections = {
+        "private": private or [],
+        "agency": agency or [],
+        "platinum": platinum or [],
+        "kingOfTheHar": king or [],
+        "trio": [],
+        "booster": [],
+    }
+    total = sum(len(v) for v in sections.values())
+    return {
+        "data": {
+            "pagination": {"totalPages": total_pages, "total": total, "page": 1},
+            **sections,
+        }
+    }

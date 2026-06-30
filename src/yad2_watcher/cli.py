@@ -2,11 +2,12 @@
 cli.py — Command-line interface for yad2-watcher.
 
 Commands:
-  run          Run a single scan pass (used by launchd)
-  watch        Run in an infinite loop with configurable interval
-  get-chat-id  Helper to find your Telegram chat_id
-  status       Show recent run stats from the DB
-  test-notify  Send a test message to verify Telegram is working
+  run               Run a single scan pass (used by launchd)
+  watch             Run in an infinite loop with configurable interval
+  get-chat-id       Helper to find your Telegram chat_id
+  status            Show recent run stats from the DB
+  test-notify       Send a test message to verify Telegram is working
+  bootstrap-cookies Open a real browser to seed session cookies (one-time CAPTCHA fix)
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import click
-import requests
+from curl_cffi import requests  # type: ignore[import-untyped]
 import yaml
 from dotenv import load_dotenv
 from rich import print as rprint
@@ -417,6 +418,215 @@ def download_apartment(link_or_token: str) -> None:
         console.print("[dim]No photos found for this listing.[/dim]")
 
     console.print(f"[green]✓ Done! All files saved in [bold]{out_dir.absolute()}[/bold][/green]")
+
+
+@cli.command("bootstrap-cookies")
+@click.option(
+    "--url",
+    default="https://www.yad2.co.il/realestate/rent/jerusalem-area?area=7&city=3000&neighborhood=561",
+    show_default=True,
+    help="Yad2 page to open in the browser.",
+)
+@click.pass_context
+def bootstrap_cookies(ctx: click.Context, url: str) -> None:
+    """
+    Open a stealth Chromium window to earn ShieldSquare trust cookies.
+
+    Run this once when the watcher is CAPTCHA-blocked. A browser window opens
+    at Yad2. The Radware JS challenge runs automatically. Once the page loads
+    normally (you can see listings), press Enter — cookies are saved and reused.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        console.print(
+            "[red]playwright is not installed.[/red]\n"
+            "Run: [bold]poetry run playwright install chromium[/bold]"
+        )
+        sys.exit(1)
+
+    # Resolve cookies destination
+    cookies_path_raw = "~/.yad2_watcher/cookies.json"
+    try:
+        config_path = ctx.obj["config_path"]
+        if config_path.exists():
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+            cookies_path_raw = cfg.get("watcher", {}).get("cookies_path", cookies_path_raw)
+    except Exception:
+        pass
+    cookies_path = Path(os.path.expanduser(cookies_path_raw))
+
+    # Persistent user-data dir so the browser accumulates trust across runs
+    user_data_dir = str(Path(os.path.expanduser("~/.yad2_watcher/browser_profile")))
+
+    # Inline stealth patches — covers the main properties Radware/ShieldSquare inspect
+    _STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+window.chrome = { app: { isInstalled: false }, runtime: {}, csi: function(){}, loadTimes: function(){} };
+const _origQuery = window.navigator.permissions.query;
+window.navigator.permissions.query = (p) =>
+  p.name === 'notifications' ? Promise.resolve({ state: Notification.permission }) : _origQuery(p);
+Object.defineProperty(navigator, 'plugins', { get: () => {
+  const a = [
+    { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+    { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
+    { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' }
+  ];
+  a.__proto__ = PluginArray.prototype; return a;
+}});
+Object.defineProperty(navigator, 'languages', { get: () => ['he-IL','he','en-US','en'] });
+const _getParam = WebGLRenderingContext.prototype.getParameter;
+WebGLRenderingContext.prototype.getParameter = function(p) {
+  if (p === 37445) return 'Intel Inc.';
+  if (p === 37446) return 'Intel Iris OpenGL Engine';
+  return _getParam.call(this, p);
+};
+"""
+
+    console.print("[bold cyan]Opening stealth Chromium window...[/bold cyan]")
+    console.print(
+        "\n[bold yellow]What to do:[/bold yellow]\n"
+        " 1. A browser window will open at Yad2.\n"
+        " 2. If listings load normally — great, press Enter.\n"
+        " 3. If a spinner / CAPTCHA appears, wait ~10s for it to auto-complete.\n"
+        "    If still stuck, press Ctrl+R once to refresh.\n"
+        " 4. Once you can see rental listings, press [bold]Enter[/bold] here.\n"
+    )
+
+    with sync_playwright() as p:
+        # launch_persistent_context has fewer automation signals than new_context
+        context = p.chromium.launch_persistent_context(
+            user_data_dir,
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-infobars",
+                "--lang=he-IL",
+            ],
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            locale="he-IL",
+            viewport={"width": 1280, "height": 900},
+            timezone_id="Asia/Jerusalem",
+        )
+        context.add_init_script(_STEALTH_JS)
+        page = context.new_page()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+        except Exception as exc:
+            console.print(f"[yellow]Page load timeout: {exc}[/yellow] (window still open)")
+
+        input("\n>>> Press Enter once you can see Yad2 listings... ")
+
+        raw_cookies = context.cookies()
+        context.close()
+
+    if not raw_cookies:
+        console.print("[red]No cookies found. Did the page load? Try again.[/red]")
+        sys.exit(1)
+
+    uzm_cookies = [c for c in raw_cookies if c["name"].startswith(("__uzm", "__ss", "__uzmaj"))]
+    if not uzm_cookies:
+        console.print(
+            "[yellow]ShieldSquare cookies (__uzm*) not found yet.[/yellow]\n"
+            "The challenge may not have resolved. Try running again and wait longer."
+        )
+
+    cookies_dict = {c["name"]: c["value"] for c in raw_cookies}
+    cookies_path.parent.mkdir(parents=True, exist_ok=True)
+    cookies_path.write_text(json.dumps(cookies_dict, ensure_ascii=False))
+
+    console.print(
+        f"[green]Saved {len(cookies_dict)} cookies -> {cookies_path}[/green]\n"
+        f"[dim]ShieldSquare (__uzm*) cookies captured: {len(uzm_cookies)}[/dim]\n"
+        "[dim]Run [bold]yad2-watcher run[/bold] to test.[/dim]"
+    )
+
+
+
+@cli.command("import-cookies")
+@click.argument("cookie_file", type=click.Path(exists=True, dir_okay=False))
+@click.pass_context
+def import_cookies(ctx: click.Context, cookie_file: str) -> None:
+    """
+    Import cookies from a browser export file into the watcher session.
+
+    COOKIE_FILE should be a JSON file exported by the "Cookie Editor" Chrome
+    extension (https://cookie-editor.com). Supported formats:
+
+    \b
+    - Array:  [{\"name\": \"...\", \"value\": \"...\", ...}, ...]   ← Cookie Editor default
+    - Flat:   {\"name\": \"value\", ...}                          ← watcher's own format
+
+    Steps:
+    \b
+    1. Install "Cookie Editor" from the Chrome Web Store.
+    2. Visit https://www.yad2.co.il in Chrome (complete any CAPTCHA if shown).
+    3. Click the Cookie Editor icon → Export → Export as JSON.
+       (It copies JSON to your clipboard.)
+    4. Paste into a file:  pbpaste > /tmp/yad2_cookies.json
+    5. Run:  poetry run yad2-watcher import-cookies /tmp/yad2_cookies.json
+    """
+    src = Path(cookie_file)
+    try:
+        raw = json.loads(src.read_text())
+    except Exception as exc:
+        console.print(f"[red]✗ Could not read {src}: {exc}[/red]")
+        sys.exit(1)
+
+    # Normalise to a list of {name, value, domain} objects (new domain-aware format).
+    _BLOCKED_DOMAINS = ("perfdrive.com", "shieldsquare")
+
+    if isinstance(raw, list):
+        # Standard Cookie Editor export — array of browser cookie objects.
+        cookie_list = [
+            {
+                "name": c["name"],
+                "value": c["value"],
+                "domain": c.get("domain", ".yad2.co.il"),
+            }
+            for c in raw
+            if "name" in c and "value" in c
+            and not any(b in c.get("domain", "") for b in _BLOCKED_DOMAINS)
+        ]
+    elif isinstance(raw, dict):
+        # Legacy flat {name: value} format — assume .yad2.co.il domain.
+        cookie_list = [
+            {"name": k, "value": str(v), "domain": ".yad2.co.il"}
+            for k, v in raw.items()
+        ]
+    else:
+        console.print("[red]✗ Unrecognised cookie format. Expected a JSON array or object.[/red]")
+        sys.exit(1)
+
+    if not cookie_list:
+        console.print("[red]✗ No cookies found in file.[/red]")
+        sys.exit(1)
+
+    # Resolve destination from config
+    cookies_path_raw = "~/.yad2_watcher/cookies.json"
+    try:
+        config_path = ctx.obj["config_path"]
+        if config_path.exists():
+            with open(config_path) as f:
+                cfg = yaml.safe_load(f) or {}
+            cookies_path_raw = cfg.get("watcher", {}).get("cookies_path", cookies_path_raw)
+    except Exception:
+        pass
+    cookies_path = Path(os.path.expanduser(cookies_path_raw))
+    cookies_path.parent.mkdir(parents=True, exist_ok=True)
+    cookies_path.write_text(json.dumps(cookie_list, ensure_ascii=False))
+
+    console.print(
+        f"[green]✓ Imported {len(cookie_list)} cookies → {cookies_path}[/green]\n"
+        "[dim]The watcher will reuse these cookies on the next run.[/dim]"
+    )
 
 
 def main() -> None:

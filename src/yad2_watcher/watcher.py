@@ -71,25 +71,52 @@ class Watcher:
     # ------------------------------------------------------------------
 
     def _build_session(self) -> Session:
-        """Create a curl_cffi Session and pre-load persisted cookies."""
+        """Create a curl_cffi Session and pre-load persisted cookies (domain-bound)."""
         session = Session(impersonate="chrome")
         if self._cookies_path.exists():
             try:
                 raw = json.loads(self._cookies_path.read_text())
-                for name, value in raw.items():
-                    session.cookies.set(name, value)  # type: ignore[attr-defined]
-                logger.debug("Loaded %d cookies from %s", len(raw), self._cookies_path)
+                # Support both old flat {name: value} format and new list-of-objects format.
+                if isinstance(raw, list):
+                    cookie_list = raw
+                else:
+                    # Legacy flat format — treat as domain-less yad2.co.il cookies.
+                    cookie_list = [
+                        {"name": k, "value": v, "domain": ".yad2.co.il"}
+                        for k, v in raw.items()
+                    ]
+
+                loaded = 0
+                for c in cookie_list:
+                    domain = c.get("domain", "")
+                    # Never inject Radware challenge cookies into the session —
+                    # they are domain-specific and will cause blocks on other hosts.
+                    if "perfdrive.com" in domain or "shieldsquare" in domain:
+                        continue
+                    name = c.get("name")
+                    value = c.get("value")
+                    if name and value is not None:
+                        session.cookies.set(  # type: ignore[attr-defined]
+                            name, value, domain=domain or None
+                        )
+                        loaded += 1
+                logger.debug("Loaded %d cookies from %s", loaded, self._cookies_path)
             except Exception as exc:
                 logger.warning("Could not load cookies from %s: %s", self._cookies_path, exc)
         return session
 
     def _save_cookies(self) -> None:
-        """Persist current session cookies to disk for the next run."""
+        """Persist current session cookies to disk as a list of domain-aware objects."""
         try:
             self._cookies_path.parent.mkdir(parents=True, exist_ok=True)
-            cookies = dict(self._session.cookies)  # type: ignore[attr-defined]
-            self._cookies_path.write_text(json.dumps(cookies))
-            logger.debug("Saved %d cookies to %s", len(cookies), self._cookies_path)
+            # Iterate the underlying jar to get per-domain cookies without ambiguity.
+            cookie_list = [
+                {"name": c.name, "value": c.value, "domain": c.domain or ""}
+                for c in self._session.cookies.jar  # type: ignore[attr-defined]
+                if c.name and "perfdrive.com" not in (c.domain or "")
+            ]
+            self._cookies_path.write_text(json.dumps(cookie_list, ensure_ascii=False))
+            logger.debug("Saved %d cookies to %s", len(cookie_list), self._cookies_path)
         except Exception as exc:
             logger.warning("Could not save cookies to %s: %s", self._cookies_path, exc)
 
