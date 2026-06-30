@@ -7,7 +7,13 @@ import json
 import pytest
 import requests
 
-from yad2_watcher.fetcher import Listing, _parse_listing, fetch_item_customer, fetch_listings
+from yad2_watcher.fetcher import (
+    CaptchaBlockError,
+    Listing,
+    _parse_listing,
+    fetch_item_customer,
+    fetch_listings,
+)
 
 from .conftest import RAW_AGENCY, RAW_MINIMAL, RAW_PRIVATE, make_next_data_html
 
@@ -150,7 +156,7 @@ class TestFetchListings:
 
     def test_raises_on_captcha(self, mocker) -> None:
         html = "<html><body>ShieldSquare CAPTCHA triggered</body></html>"
-        with pytest.raises(ValueError, match="ShieldSquare"):
+        with pytest.raises(CaptchaBlockError, match="ShieldSquare"):
             self._call(mocker, html)
 
     def test_raises_on_missing_next_data(self, mocker) -> None:

@@ -8,7 +8,7 @@ import logging
 import time
 from typing import Any
 
-from .fetcher import Listing, fetch_item_customer, fetch_listings
+from .fetcher import CaptchaBlockError, Listing, fetch_item_customer, fetch_listings
 from .journal import Journal, NullJournal
 from .notifier import TelegramNotifier
 from .store import SeenStore
@@ -81,6 +81,13 @@ class Watcher:
                     city=self._city,
                     timeout=self._timeout,
                 )
+            except CaptchaBlockError as exc:
+                logger.error("Scan aborted at %s (%s) due to CAPTCHA block.", nbhd_name, nbhd_id)
+                self._store.log_run(nbhd_id, 0, 0, "CAPTCHA block")
+                self._notifier.send_error(
+                    f"🛑 *Scan Aborted*\nHit a CAPTCHA block while fetching {nbhd_name} ({nbhd_id})."
+                )
+                break
             except Exception as exc:
                 logger.error("Failed to fetch %s (%s): %s", nbhd_name, nbhd_id, exc)
                 self._store.log_run(nbhd_id, 0, 0, str(exc))
@@ -132,10 +139,14 @@ class Watcher:
                 logger.info("  ✓ Sent alert for token %s (%s)", listing.token, listing.url)
             else:
                 logger.warning("  ✗ Failed to send alert for token %s", listing.token)
-                self._notifier.send_error(f"Failed to send alert for listing {listing.token} ({listing.url})")
+                self._notifier.send_error(
+                    f"Failed to send alert for listing {listing.token} ({listing.url})"
+                )
         except Exception as exc:
             logger.error("  ✗ Error sending alert for %s: %s", listing.token, exc)
-            self._notifier.send_error(f"Error sending alert for listing {listing.token} ({listing.url}): `{exc}`")
+            self._notifier.send_error(
+                f"Error sending alert for listing {listing.token} ({listing.url}): `{exc}`"
+            )
         finally:
             # Always mark as seen and journal — prevents re-alerting on send failures
             self._store.mark_seen(listing.token, listing.search_neighborhood_id, listing.price)

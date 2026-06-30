@@ -15,6 +15,13 @@ from typing import Any
 
 import requests
 
+
+class CaptchaBlockError(Exception):
+    """Raised when Yad2 returns a Radware/ShieldSquare CAPTCHA page."""
+
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Request headers that mimic a real Chrome browser on macOS
 # These are required — bare curl gets ShieldSquare CAPTCHA, these do not.
@@ -149,8 +156,12 @@ def fetch_listings(
 
     # Sanity check — if we hit the CAPTCHA page, surface it clearly
     html_lower = html.lower()
-    if "shieldsquare" in html_lower or "radware" in html_lower or "validate.perfdrive.com" in html_lower:
-        raise ValueError(
+    if (
+        "shieldsquare" in html_lower
+        or "radware" in html_lower
+        or "validate.perfdrive.com" in html_lower
+    ):
+        raise CaptchaBlockError(
             "Yad2 returned a Radware/ShieldSquare CAPTCHA. The request headers may need to be updated."
         )
 
@@ -232,7 +243,7 @@ def fetch_item_customer(token: str, timeout: int = 20) -> str | None:
 def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
     """
     Fetch raw item details and photos by listing token.
-    
+
     Returns the parsed dictionary of the 'item' query from __NEXT_DATA__.
     Raises requests.RequestException on network errors.
     Raises ValueError if structure is unexpected or CAPTCHA is hit.
@@ -244,8 +255,12 @@ def fetch_item_data(token: str, timeout: int = 20) -> dict[str, Any]:
     html = response.text
 
     html_lower = html.lower()
-    if "shieldsquare" in html_lower or "radware" in html_lower or "validate.perfdrive.com" in html_lower:
-        raise ValueError(
+    if (
+        "shieldsquare" in html_lower
+        or "radware" in html_lower
+        or "validate.perfdrive.com" in html_lower
+    ):
+        raise CaptchaBlockError(
             "Yad2 returned a Radware/ShieldSquare CAPTCHA. The request headers may need to be updated."
         )
 
