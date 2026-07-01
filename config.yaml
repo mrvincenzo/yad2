@@ -43,12 +43,12 @@ search_defaults:
 # Each entry needs: id, name, url_slug
 # url_slug is the path segment after /realestate/rent/  (e.g. jerusalem-area)
 neighborhoods:
-  - id: 561
-    name: "rasko"
-    url_slug: "jerusalem-area"
-
   - id: 544
     name: "beit-hakarem"
+    url_slug: "jerusalem-area"
+
+  - id: 561
+    name: "rasko"
     url_slug: "jerusalem-area"
 
   - id: 562
