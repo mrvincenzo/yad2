@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from yad2_watcher.fetcher import Listing
@@ -103,37 +101,6 @@ def minimal_listing() -> Listing:
     from yad2_watcher.fetcher import _parse_listing
 
     return _parse_listing(RAW_MINIMAL, "private")
-
-
-def make_next_data_html(private: list | None = None, agency: list | None = None) -> str:
-    """Build a minimal HTML page with __NEXT_DATA__ containing listing data."""
-    feed_data = {
-        "private": private or [],
-        "agency": agency or [],
-        "pagination": {"total": len(private or []) + len(agency or []), "totalPages": 1},
-    }
-    next_data = {
-        "props": {
-            "pageProps": {
-                "dehydratedState": {
-                    "queries": [
-                        {
-                            "queryKey": [
-                                "realestate-rent-feed",
-                                {"city": "3000", "neighborhood": "561"},
-                            ],
-                            "state": {"data": feed_data},
-                        }
-                    ]
-                }
-            }
-        }
-    }
-    return (
-        "<html><head></head><body>"
-        f'<script id="__NEXT_DATA__" type="application/json">{json.dumps(next_data)}</script>'
-        "</body></html>"
-    )
 
 
 def make_feed_response(

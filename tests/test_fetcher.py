@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
 from curl_cffi import requests  # type: ignore[import-untyped]
 
@@ -15,7 +13,7 @@ from yad2_watcher.fetcher import (
     fetch_listings,
 )
 
-from .conftest import RAW_AGENCY, RAW_MINIMAL, RAW_PRIVATE, make_feed_response, make_next_data_html
+from .conftest import RAW_AGENCY, RAW_MINIMAL, RAW_PRIVATE, make_feed_response
 
 # ---------------------------------------------------------------------------
 # Listing dataclass
@@ -291,16 +289,28 @@ class TestFetchListings:
         page1_listing = {**RAW_PRIVATE, "token": "p1tok"}
         page2_listing = {**RAW_PRIVATE, "token": "p2tok", "price": 8000}
 
-        page1 = {"data": {
-            "pagination": {"totalPages": 2, "total": 2},
-            "private": [page1_listing], "agency": [], "platinum": [],
-            "kingOfTheHar": [], "trio": [], "booster": [],
-        }}
-        page2 = {"data": {
-            "pagination": {"totalPages": 2, "total": 2},
-            "private": [page2_listing], "agency": [], "platinum": [],
-            "kingOfTheHar": [], "trio": [], "booster": [],
-        }}
+        page1 = {
+            "data": {
+                "pagination": {"totalPages": 2, "total": 2},
+                "private": [page1_listing],
+                "agency": [],
+                "platinum": [],
+                "kingOfTheHar": [],
+                "trio": [],
+                "booster": [],
+            }
+        }
+        page2 = {
+            "data": {
+                "pagination": {"totalPages": 2, "total": 2},
+                "private": [page2_listing],
+                "agency": [],
+                "platinum": [],
+                "kingOfTheHar": [],
+                "trio": [],
+                "booster": [],
+            }
+        }
 
         def make_paged_resp(data):
             r = mocker.MagicMock()
